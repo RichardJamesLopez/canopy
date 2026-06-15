@@ -31,7 +31,7 @@ var ContractConfig = &PluginConfig{
 		"type.googleapis.com/types.MessageDcbFire",
 		"type.googleapis.com/types.MessageDcbBuyInfra",
 	},
-	EventTypeUrls: nil,
+	EventTypeUrls: []string{"dcb/state"},
 }
 
 // init sets FileDescriptorProtos after ensuring .pb.go files are initialized
@@ -61,11 +61,16 @@ type Contract struct {
 	plugin    *Plugin          // plugin connection
 	fsmId     uint64           // the id of the requesting fsm
 	dcbHeight uint64           // current block height, cached each BeginBlock (DCB)
+
+	// DCB season world seed, derived from genesis (see initSeason / seasonSeed).
+	cachedSeasonSeed [32]byte
+	seasonSeedSet    bool
 }
 
 // Genesis() implements logic to import a json file to create the state at height 0 and export the state at any height
-func (c *Contract) Genesis(_ *PluginGenesisRequest) *PluginGenesisResponse {
-	return &PluginGenesisResponse{} // TODO map out original token holders
+func (c *Contract) Genesis(request *PluginGenesisRequest) *PluginGenesisResponse {
+	c.initSeason(request.GenesisJson) // derive + persist the DCB season seed
+	return &PluginGenesisResponse{}
 }
 
 // BeginBlock() is code that is executed at the start of `applying` the block

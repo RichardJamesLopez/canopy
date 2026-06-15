@@ -14,14 +14,48 @@ import (
 
 	"github.com/canopy-network/go-plugin/internal/dcb/engine"
 	dfsm "github.com/canopy-network/go-plugin/internal/dcb/fsm"
+	t "github.com/canopy-network/go-plugin/internal/dcb/dcbtypes"
+
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
-// dcbSeasonSeed seeds NewSeason for fresh players. Fixed here; in production set
-// it from genesis (PluginGenesisRequest). Per-block entropy does NOT come from
-// this — it comes from recordDcbSeed (proposer ‖ height) read back via dcbHost.
-var dcbSeasonSeed = sha256.Sum256([]byte("dcb/season/1"))
+// dcbSeasonSeedDefault is the fallback world seed when no genesis-derived seed is
+// available (e.g. dev). The real seed is set in Genesis from the genesis JSON so
+// every validator shares one world; see initSeason / seasonSeed. Per-block
+// entropy does NOT come from this — it comes from recordDcbSeed (proposer ‖
+// height) read back via dcbHost.
+var dcbSeasonSeedDefault = sha256.Sum256([]byte("dcb/season/1"))
+
+// dcbSeasonSeedKey persists the genesis-derived season seed in plugin state so it
+// survives plugin restarts and is identical across validators.
+var dcbSeasonSeedKey = []byte("dcb/season-seed")
 
 var dcbSeedPrefix = []byte("dcb/seed")
+
+// initSeason derives the season world seed from the genesis JSON (deterministic
+// and identical for every validator) and persists it. Called from Genesis().
+func (c *Contract) initSeason(genesisJSON []byte) {
+	seed := dcbSeasonSeedDefault
+	if len(genesisJSON) > 0 {
+		seed = sha256.Sum256(genesisJSON)
+	}
+	(dcbStore{c}).Set(dcbSeasonSeedKey, seed[:])
+	c.cachedSeasonSeed, c.seasonSeedSet = seed, true
+}
+
+// seasonSeed resolves the world seed: the cached genesis value, else the
+// persisted state value, else the fixed default.
+func (c *Contract) seasonSeed() [32]byte {
+	if c.seasonSeedSet {
+		return c.cachedSeasonSeed
+	}
+	if v, ok := (dcbStore{c}).Get(dcbSeasonSeedKey); ok && len(v) == 32 {
+		copy(c.cachedSeasonSeed[:], v)
+		c.seasonSeedSet = true
+		return c.cachedSeasonSeed
+	}
+	return dcbSeasonSeedDefault
+}
 
 func dcbSeedKey(height uint64) []byte {
 	k := make([]byte, len(dcbSeedPrefix)+8)
@@ -99,7 +133,7 @@ func (h dcbHost) Seed(height uint64) [32]byte {
 
 // dcbFSM builds the game state machine bound to this block's chain context.
 func (c *Contract) dcbFSM() *dfsm.FSM {
-	return dfsm.New(dcbStore{c}, dcbHost{c}, dcbSeasonSeed)
+	return dfsm.New(dcbStore{c}, dcbHost{c}, c.seasonSeed())
 }
 
 // recordDcbSeed stores seed(height) = sha256(proposer ‖ height). Canopy does not
@@ -118,13 +152,42 @@ func (c *Contract) recordDcbSeed(height uint64, proposer []byte) {
 
 func dcbErr(err error) *PluginError { return NewError(100, "dcb", err.Error()) }
 
+// dcbStateTypeURL labels the player-state event payload (declared in
+// ContractConfig.EventTypeUrls). The Any.Value is engine.EncodeState bytes.
+const dcbStateTypeURL = "dcb/state"
+
+// stateEvent builds a player-state event: the encoded State under dcbStateTypeURL,
+// tagged with the player address so clients read it via events-by-address.
+func stateEvent(addr []byte, st *t.State) *Event {
+	return &Event{
+		EventType: "dcb_state",
+		Address:   addr,
+		Msg: &Event_Custom{Custom: &EventCustom{Msg: &anypb.Any{
+			TypeUrl: dcbStateTypeURL,
+			Value:   engine.EncodeState(st),
+		}}},
+	}
+}
+
+// deliver runs an FSM op for the player then emits the resulting state as an
+// event, so external clients can read player state without a per-key RPC.
+func (c *Contract) deliver(addr []byte, do func(f *dfsm.FSM, id uint64) error) *PluginDeliverResponse {
+	id := playerID(addr)
+	f := c.dcbFSM()
+	if err := do(f, id); err != nil {
+		return &PluginDeliverResponse{Error: dcbErr(err)}
+	}
+	resp := &PluginDeliverResponse{}
+	if rec, ok := f.GetPlayer(id); ok {
+		resp.Events = []*Event{stateEvent(addr, &rec.State)}
+	}
+	return resp
+}
+
 // ---- DeliverTx handlers ----
 
 func (c *Contract) DeliverDcbStartRun(m *MessageDcbStartRun) *PluginDeliverResponse {
-	if err := c.dcbFSM().StartRun(playerID(m.Address), m.Name, 0); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.StartRun(id, m.Name, 0) })
 }
 
 func (c *Contract) DeliverDcbSetPolicy(m *MessageDcbSetPolicy) *PluginDeliverResponse {
@@ -132,52 +195,31 @@ func (c *Contract) DeliverDcbSetPolicy(m *MessageDcbSetPolicy) *PluginDeliverRes
 	if err != nil {
 		return &PluginDeliverResponse{Error: dcbErr(err)}
 	}
-	if err := c.dcbFSM().SetPolicy(playerID(m.Address), p); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.SetPolicy(id, p) })
 }
 
 func (c *Contract) DeliverDcbCheckpoint(m *MessageDcbCheckpoint) *PluginDeliverResponse {
-	if err := c.dcbFSM().Checkpoint(playerID(m.Address)); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.Checkpoint(id) })
 }
 
 func (c *Contract) DeliverDcbBuy(m *MessageDcbBuy) *PluginDeliverResponse {
-	if err := c.dcbFSM().Buy(playerID(m.Address), int(m.Kind), m.Qty); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.Buy(id, int(m.Kind), m.Qty) })
 }
 
 func (c *Contract) DeliverDcbSell(m *MessageDcbSell) *PluginDeliverResponse {
-	if err := c.dcbFSM().Sell(playerID(m.Address), int(m.Kind), m.Qty); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.Sell(id, int(m.Kind), m.Qty) })
 }
 
 func (c *Contract) DeliverDcbHire(m *MessageDcbHire) *PluginDeliverResponse {
-	if err := c.dcbFSM().Hire(playerID(m.Address), m.N); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.Hire(id, m.N) })
 }
 
 func (c *Contract) DeliverDcbFire(m *MessageDcbFire) *PluginDeliverResponse {
-	if err := c.dcbFSM().Fire(playerID(m.Address), m.N); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.Fire(id, m.N) })
 }
 
 func (c *Contract) DeliverDcbBuyInfra(m *MessageDcbBuyInfra) *PluginDeliverResponse {
-	if err := c.dcbFSM().BuyInfra(playerID(m.Address), int(m.Infra), m.Qty); err != nil {
-		return &PluginDeliverResponse{Error: dcbErr(err)}
-	}
-	return &PluginDeliverResponse{}
+	return c.deliver(m.Address, func(f *dfsm.FSM, id uint64) error { return f.BuyInfra(id, int(m.Infra), m.Qty) })
 }
 
 // ---- CheckTx (stateless) ----
