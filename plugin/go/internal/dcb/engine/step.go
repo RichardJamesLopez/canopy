@@ -31,7 +31,7 @@ func Step(s t.State, p t.Policy, ctx t.StepContext) (t.State, t.BlockReport) {
 
 	// 2. Advance/spawn events, then fold active modifiers.
 	var spawned []t.ActiveEvent
-	s.Events, spawned = advanceEvents(s.Events, evRng)
+	s.Events, spawned = advanceEvents(s.Events, evRng, ctx.Height)
 	rm := resolve(s.Events)
 
 	// 3. Demand for this block (deterministic curve × event multiplier).
@@ -98,11 +98,11 @@ func Step(s t.State, p t.Policy, ctx t.StepContext) (t.State, t.BlockReport) {
 			totalCU += s.Servers[k][r] * Accel[k].CUPerUnit
 		}
 		regPU = s.PowerPU[r]
-		regPowerCost := m.Mul(PowerCost, m.Mul(Regions[r].PowerCostMult, rm.powerCost[r]))
+		regPowerCost := m.Mul(PowerCostAt(ctx.Height), m.Mul(Regions[r].PowerCostMult, rm.powerCost[r]))
 		opexPower += regPU * regPowerCost
 	}
-	opexStaff := m.Mul(m.FromInt(s.StaffSU), StaffWage)
-	opexMaint := m.Mul(m.FromInt(totalCU), MaintRate)
+	opexStaff := m.Mul(m.FromInt(s.StaffSU), StaffWageAt(ctx.Height))
+	opexMaint := m.Mul(m.FromInt(totalCU), MaintRateAt(ctx.Height))
 	opex := opexPower + opexStaff + opexMaint
 	if s.Debt > 0 {
 		opex += m.Mul(s.Debt, s.DebtRate) // interest at the rate locked when drawn

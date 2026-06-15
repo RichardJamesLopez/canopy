@@ -10,8 +10,9 @@ type FP = dcbmath.FP
 
 // RulesVersion is the current rules revision. Past versions stay compiled in so
 // in-flight seasons replay under the rules they started with. Bumped to 2 for
-// the direct-build / typed-compute / monthly-block redesign.
-const RulesVersion uint16 = 3
+// the direct-build / typed-compute / monthly-block redesign; to 4 for the
+// difficulty progression, dynamic input prices, and asymmetric-chip retune.
+const RulesVersion uint16 = 4
 
 // Pacing. ONE BLOCK = ONE WEEK (5s real-time). A year is 52 blocks; a quarter is
 // 13. The run is open-ended (survival), so there is no fixed season length —
@@ -37,12 +38,17 @@ type AccelProfile struct {
 // Accel is the static per-type profile table, indexed by the Acc* constants.
 // Order is normative. Each type carries its own power/cooling profile (the
 // reciprocity surface) and trades off cost vs efficiency.
+// Asymmetric profiles: the five types trade off output (CUPerUnit) against
+// power/cooling/staff/land draw, so the best fleet mix changes with which types
+// are in demand this quarter. GPU and MTIA are high-output flagships (2 CU/unit)
+// that are power- and land-hungry; TPU/Maia are balanced; Trainium is the lean,
+// modest-output efficiency play.
 var Accel = [t.NACCEL]AccelProfile{
-	t.AccGPU:      {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(1_200_000), CoolPerUnit: dcbmath.FP(1_100_000), StaffPerUnit: dcbmath.FP(8_000), AcrePerUnit: dcbmath.FP(10_000)},
+	t.AccGPU:      {CUPerUnit: 2, PowerPerUnit: dcbmath.FP(2_400_000), CoolPerUnit: dcbmath.FP(2_200_000), StaffPerUnit: dcbmath.FP(14_000), AcrePerUnit: dcbmath.FP(20_000)},
 	t.AccTPU:      {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(1_000_000), CoolPerUnit: dcbmath.FP(950_000), StaffPerUnit: dcbmath.FP(7_000), AcrePerUnit: dcbmath.FP(9_000)},
-	t.AccTrainium: {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(900_000), CoolPerUnit: dcbmath.FP(850_000), StaffPerUnit: dcbmath.FP(6_500), AcrePerUnit: dcbmath.FP(9_000)},
-	t.AccMaia:     {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(950_000), CoolPerUnit: dcbmath.FP(900_000), StaffPerUnit: dcbmath.FP(7_000), AcrePerUnit: dcbmath.FP(10_000)},
-	t.AccMTIA:     {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(1_100_000), CoolPerUnit: dcbmath.FP(1_050_000), StaffPerUnit: dcbmath.FP(7_500), AcrePerUnit: dcbmath.FP(10_000)},
+	t.AccTrainium: {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(820_000), CoolPerUnit: dcbmath.FP(780_000), StaffPerUnit: dcbmath.FP(6_000), AcrePerUnit: dcbmath.FP(8_500)},
+	t.AccMaia:     {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(920_000), CoolPerUnit: dcbmath.FP(880_000), StaffPerUnit: dcbmath.FP(6_800), AcrePerUnit: dcbmath.FP(9_500)},
+	t.AccMTIA:     {CUPerUnit: 2, PowerPerUnit: dcbmath.FP(2_000_000), CoolPerUnit: dcbmath.FP(1_900_000), StaffPerUnit: dcbmath.FP(13_000), AcrePerUnit: dcbmath.FP(19_000)},
 }
 
 // Reciprocity ramp rates: how fast the smoothed operable fraction moves toward
@@ -74,12 +80,15 @@ var (
 	HireCost = dcbmath.FromInt(20_000) // $/person (hire/fire 10 at a time)
 
 	// CostServer is the one-time buy price for one unit of each accelerator type.
+	// Buy prices scale with output: the 2-CU flagships (GPU/MTIA) cost ~2× the
+	// 1-CU types. This is the BASE price; the live price escalates with height
+	// (see BuyPriceServer in difficulty.go).
 	CostServer = [t.NACCEL]FP{
-		t.AccGPU:      dcbmath.FromInt(3_200),
+		t.AccGPU:      dcbmath.FromInt(6_400),
 		t.AccTPU:      dcbmath.FromInt(3_000),
-		t.AccTrainium: dcbmath.FromInt(2_800),
+		t.AccTrainium: dcbmath.FromInt(2_600),
 		t.AccMaia:     dcbmath.FromInt(2_900),
-		t.AccMTIA:     dcbmath.FromInt(3_100),
+		t.AccMTIA:     dcbmath.FromInt(6_200),
 	}
 )
 
@@ -120,15 +129,18 @@ var (
 		t.AccMaia:     dcbmath.Pct(14),
 		t.AccMTIA:     dcbmath.Pct(18),
 	}
+	// Large amplitudes + a short period make the FAVORED type rotate quarter to
+	// quarter: each type's demand share swings hard around its base, and the
+	// staggered phases hand leadership from one chip to the next every quarter.
 	MixAmp = [t.NACCEL]FP{
-		t.AccGPU:      dcbmath.Pct(10),
-		t.AccTPU:      dcbmath.Pct(10),
-		t.AccTrainium: dcbmath.Pct(8),
-		t.AccMaia:     dcbmath.Pct(8),
-		t.AccMTIA:     dcbmath.Pct(10),
+		t.AccGPU:      dcbmath.Pct(22),
+		t.AccTPU:      dcbmath.Pct(20),
+		t.AccTrainium: dcbmath.Pct(16),
+		t.AccMaia:     dcbmath.Pct(16),
+		t.AccMTIA:     dcbmath.Pct(20),
 	}
 	MixPhaseQ  = [t.NACCEL]int64{0, 1, 2, 3, 4}
-	MixPeriodQ = int64(8) // 8 quarters = 2-year mix rotation
+	MixPeriodQ = int64(4) // 4 quarters = 1-year mix rotation (favored chip rotates each quarter)
 )
 
 // Funding (debt) interest. The rate is a *fraction* per block (month), unscaled

@@ -72,7 +72,7 @@ func Buy(s *t.State, p t.Policy, kind int, qty int64) error {
 	if qty <= 0 {
 		return ErrBadQty
 	}
-	cost := m.Mul(m.FromInt(qty), CostServer[kind])
+	cost := m.Mul(m.FromInt(qty), BuyPriceServer(kind, s.Height))
 	if !affordable(s, cost) {
 		return ErrInsufficient
 	}
@@ -110,6 +110,8 @@ func Sell(s *t.State, kind int, qty int64) error {
 		}
 		s.Servers[kind][r] -= n
 	}
+	// Refund at the BASE buy price (not the escalated price) so rising prices
+	// can't be arbitraged by buying low and selling back high.
 	refund := m.Mul(m.Mul(m.FromInt(qty), CostServer[kind]), SellRefundPct)
 	s.Capital += refund
 	return nil
@@ -123,7 +125,7 @@ func Hire(s *t.State, n int64) error {
 	if n%10 != 0 {
 		return ErrBadStep
 	}
-	cost := m.Mul(m.FromInt(n), HireCost)
+	cost := m.Mul(m.FromInt(n), HireCostAt(s.Height))
 	if !affordable(s, cost) {
 		return ErrInsufficient
 	}
@@ -166,17 +168,17 @@ func buyShared(s *t.State, p t.Policy, qty int64, unit m.FP, add func(r int, n i
 
 // BuyPower adds qty power units, distributed across regions by region weights.
 func BuyPower(s *t.State, p t.Policy, qty int64) error {
-	return buyShared(s, p, qty, CostPU, func(r int, n int64) { s.PowerPU[r] += n })
+	return buyShared(s, p, qty, PricePU(s.Height), func(r int, n int64) { s.PowerPU[r] += n })
 }
 
 // BuyCooling adds qty cooling units.
 func BuyCooling(s *t.State, p t.Policy, qty int64) error {
-	return buyShared(s, p, qty, CostKU, func(r int, n int64) { s.CoolingKU[r] += n })
+	return buyShared(s, p, qty, PriceKU(s.Height), func(r int, n int64) { s.CoolingKU[r] += n })
 }
 
 // BuyLand adds acres of land.
 func BuyLand(s *t.State, p t.Policy, acres int64) error {
-	return buyShared(s, p, acres, CostAcre, func(r int, n int64) { s.LandAcres[r] += n })
+	return buyShared(s, p, acres, PriceAcre(s.Height), func(r int, n int64) { s.LandAcres[r] += n })
 }
 
 // BuyNetwork adds gbps of network capacity (gated by the Network unlock).

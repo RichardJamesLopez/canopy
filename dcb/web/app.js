@@ -457,10 +457,10 @@ function renderDash() {
   </div>`;
 }
 
-// Compact single-row accelerator grid (Claude Design "DCB Accelerators" handoff):
-// TYPE (name + maker logo) · OWNED (count + −/+ steppers) · MARKET DEMAND bar ·
-// PRICE ($/unit). Drops the per-row "your %" bar — that signal lives on Markets.
-const ACCEL_GRID = "display:grid;grid-template-columns:150px 158px 1fr 112px;align-items:center;gap:18px;";
+// Compact single-row accelerator grid: TYPE (name + maker logo) · OWNED (count +
+// −/+ steppers) · PRICE ($/unit, the live escalating buy price). The market
+// demand signal lives on the Revenue tab, so it is not duplicated here.
+const ACCEL_GRID = "display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;";
 
 function accelStepper(call, label) {
   return `<button onclick="${call}" title="${label}" style="width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #dcdce0;border-radius:6px;background:#fff;color:#5c6166;font-size:16px;line-height:1;cursor:pointer;font-family:inherit;flex-shrink:0">${label[0] === "s" ? "−" : "+"}</button>`;
@@ -484,39 +484,31 @@ function makerLogo(i) {
 function renderCost() {
   const v = vm;
   let h = `<div class="sec"><span class="h">COST</span><span class="note">[ the four levers below configure your operation — buy/sell to drive revenue ]</span></div>`;
+  h += `<div class="cost-grid">`;
 
-  // ---- Accelerators card ----
-  const accelTip = "Chips produce compute (CU). More chips → more compute → more revenue — as long as you can power, cool & staff them and the market wants that type. See earnings per type on the Revenue tab.";
-  h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">ACCELERATORS</span><span class="info" title="${accelTip}">?</span><span class="note">[ each type has its own price + market ]</span></div>`;
-  h += `<div style="${ACCEL_GRID}padding:9px 0 7px;font-size:10px;letter-spacing:.1em;color:#b6b7bd">
-    <span>TYPE</span><span>OWNED</span><span>MARKET DEMAND</span><span style="text-align:right">PRICE</span></div>`;
-  const maxShare = Math.max(0.0001, ...v.accelerators.map(a => a.demandShare));
+  // ---- Accelerators card (top-left) ----
+  const accelTip = "Chips produce compute (CU). More chips → more compute → more revenue — as long as you can power, cool & staff them and the market wants that type. Types differ in output and power/cooling/land draw, and prices rise over time. See earnings per type on the Revenue tab.";
+  h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">ACCELERATORS</span><span class="info" title="${accelTip}">?</span><span class="note">[ each type: own price + footprint ]</span></div>`;
+  h += `<div style="${ACCEL_GRID}padding:8px 0 6px;font-size:10px;letter-spacing:.1em;color:#b6b7bd">
+    <span>TYPE</span><span>OWNED</span><span style="text-align:right">PRICE</span></div>`;
   v.accelerators.forEach((a, i) => {
     const inc = tier(a.units);
-    const demandPct = Math.round((a.demandShare / maxShare) * 100);
-    const demandLabel = Math.round(a.demandShare * 100);
-    h += `<div style="${ACCEL_GRID}padding:7px 0;border-top:1px solid #f0f0f2">
-      <div style="display:flex;align-items:center;gap:11px;min-width:0">
-        <span style="font-size:16px;font-weight:600;color:${ACCEL_COLORS[i]};white-space:nowrap">${esc(a.name)}</span>
+    h += `<div style="${ACCEL_GRID}padding:6px 0;border-top:1px solid #f0f0f2">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span style="font-size:15px;font-weight:600;color:${ACCEL_COLORS[i]};white-space:nowrap">${esc(a.name)}</span>
         ${makerLogo(i)}
       </div>
-      <div style="display:flex;align-items:center;gap:9px">
-        <span style="font-size:15px;color:#5c6166;white-space:nowrap"><b style="color:#383a42;font-weight:700">${comma(a.units)}</b> units</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;color:#5c6166;white-space:nowrap"><b style="color:#383a42;font-weight:700">${comma(a.units)}</b> units</span>
         ${accelStepper(`act.sell(${i},${inc})`, `sell ${inc}`)}
         ${accelStepper(`act.buy(${i},${inc})`, `buy ${inc}`)}
       </div>
-      <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <div style="flex:1;min-width:60px;max-width:220px;height:7px;border-radius:4px;background:#edeef0;overflow:hidden">
-          <div style="height:100%;width:${demandPct}%;background:${ACCEL_COLORS[i]};border-radius:4px;opacity:.85"></div>
-        </div>
-        <span style="font-size:12.5px;color:#9b9ca3;white-space:nowrap">demand ${demandLabel}%</span>
-      </div>
-      <div style="text-align:right;font-size:14.5px;font-weight:600;color:#383a42;font-variant-numeric:tabular-nums;white-space:nowrap">${money(a.costUnit)}<span style="color:#b6b7bd;font-weight:400">/unit</span></div>
+      <div style="text-align:right;font-size:14px;font-weight:600;color:#383a42;font-variant-numeric:tabular-nums;white-space:nowrap">${money(a.costUnit)}<span style="color:#b6b7bd;font-weight:400">/unit</span></div>
     </div>`;
   });
   h += `</div>`; // end accelerators card
 
-  // ---- Shared infrastructure card ----
+  // ---- Shared infrastructure card (top-right) ----
   h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">SHARED INFRASTRUCTURE</span><span class="note">[ all servers draw on these ]</span></div>`;
   const pInc = tier(v.powerPU), cInc = tier(v.coolingKU);
   const infraRows = [
@@ -571,12 +563,14 @@ function renderCost() {
       <span class="bright" style="margin-right:8px">${lv}</span>
       <button class="step" onclick="act.lev(-1)">−</button><button class="step" onclick="act.lev(1)">+</button></div>`;
   }
+  // ---- Funding card (bottom-left) ----
   h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">FUNDING</span><span class="note">[ borrow cash now, repay with interest ]</span></div>
     ${takeRow}${repayRow}${levRow}
   </div>`;
 
-  // ---- Region allocation card ----
+  // ---- Region allocation card (bottom-right) ----
   h += `<div class="config-card">${regionTable(false)}</div>`;
+  h += `</div>`; // end cost-grid
   return h;
 }
 

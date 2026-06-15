@@ -107,7 +107,7 @@ var catProb = [t.NCATEGORY]m.FP{
 // new spawns for each category in order. Returns the surviving+new slice and the
 // list of newly spawned events (for the report). All draws come from the events
 // stream; the draw sequence is deterministic.
-func advanceEvents(events []t.ActiveEvent, rng *m.RNG) ([]t.ActiveEvent, []t.ActiveEvent) {
+func advanceEvents(events []t.ActiveEvent, rng *m.RNG, height uint64) ([]t.ActiveEvent, []t.ActiveEvent) {
 	kept := events[:0:0] // new backing array; never alias caller storage
 	for _, e := range events {
 		e.Remaining--
@@ -116,9 +116,11 @@ func advanceEvents(events []t.ActiveEvent, rng *m.RNG) ([]t.ActiveEvent, []t.Act
 		}
 	}
 
+	// Events get more frequent as difficulty rises (markets grow more erratic).
+	vol := volatilityMult(height)
 	var spawned []t.ActiveEvent
 	for cat := t.Category(0); cat < t.NCATEGORY; cat++ {
-		if !rng.Chance(catProb[cat]) {
+		if !rng.Chance(m.Mul(catProb[cat], vol)) {
 			continue
 		}
 		tmpls := catTemplates[cat]

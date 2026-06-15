@@ -185,7 +185,7 @@ func Build(s *t.State, last t.BlockReport, policy t.Policy, meta Meta) VM {
 		}
 		accels[k] = Accel{
 			Name: t.AccelName[k], Units: unitsByType[k], Price: fpf(s.TypePrice[k]),
-			CostUnit: m.ToInt(engine.CostServer[k]), DemandShare: fpf(s.DemandMix[k]),
+			CostUnit: m.ToInt(engine.BuyPriceServer(k, s.Height)), DemandShare: fpf(s.DemandMix[k]),
 			FleetShare: fleetShare, CUPerUnit: engine.Accel[k].CUPerUnit,
 			Delivered: last.DeliveredByType[k], Revenue: m.ToInt(last.RevenueByType[k]),
 			DemandCU: m.ToInt(m.Mul(m.FromInt(s.MarketDemandCU), s.DemandMix[k])),
@@ -241,8 +241,8 @@ func Build(s *t.State, last t.BlockReport, policy t.Policy, meta Meta) VM {
 		Demand: demand, Supply: last.RawCapacity + competitorCap(s), UCD: last.UCD,
 		Accelerators: accels, PowerPU: powerPU, CoolingKU: coolingKU, LandAcres: landAcres,
 		StaffSU: s.StaffSU, NetworkGbps: s.NetworkGbps,
-		CostPU: m.ToInt(engine.CostPU), CostKU: m.ToInt(engine.CostKU), CostAcre: m.ToInt(engine.CostAcre),
-		CostHire: m.ToInt(engine.HireCost), CostGbps: m.ToInt(engine.CostGbps),
+		CostPU: m.ToInt(engine.PricePU(s.Height)), CostKU: m.ToInt(engine.PriceKU(s.Height)), CostAcre: m.ToInt(engine.PriceAcre(s.Height)),
+		CostHire: m.ToInt(engine.HireCostAt(s.Height)), CostGbps: m.ToInt(engine.CostGbps),
 		RegionsUnlocked: s.RegionsUnlocked, NetworkUnlocked: s.NetworkUnlocked, LeverageUnlocked: s.LeverageUnlocked,
 		Regions: regions, Events: events, Leaderboard: lb, Policy: FromPolicy(policy),
 		Week: int64(s.Height), Year: int64(s.Height) / int64(engine.BlocksPerYear),

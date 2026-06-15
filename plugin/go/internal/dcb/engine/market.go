@@ -72,10 +72,11 @@ func triWaveQ(q, period int64) m.FP {
 // Always sums to ~ONE (renormalized).
 func demandMix(height uint64, rm resolvedMods) [t.NACCEL]m.FP {
 	q := int64(height) / QuarterBlocks
+	vol := volatilityMult(height) // sharper quarterly swings as difficulty rises
 	var raw [t.NACCEL]m.FP
 	var sum m.FP
 	for k := 0; k < t.NACCEL; k++ {
-		v := MixBase[k] + m.Mul(MixAmp[k], triWaveQ(q+MixPhaseQ[k], MixPeriodQ))
+		v := MixBase[k] + m.Mul(m.Mul(MixAmp[k], vol), triWaveQ(q+MixPhaseQ[k], MixPeriodQ))
 		v += rm.mixShift[k]
 		if v < 0 {
 			v = 0
@@ -103,13 +104,18 @@ func demandMix(height uint64, rm resolvedMods) [t.NACCEL]m.FP {
 func recomputeMarket(s *t.State, rm resolvedMods) {
 	mix := demandMix(s.Height, rm)
 	s.DemandMix = mix
+	// The S/D band widens with difficulty: prices can spike higher and crater
+	// lower, so over/under-supplying a type is punished/rewarded harder over time.
+	vol := volatilityMult(s.Height)
+	loBand := m.Div(SDRatioMin, vol)
+	hiBand := m.Mul(SDRatioMax, vol)
 	for k := 0; k < t.NACCEL; k++ {
 		demandK := m.ToInt(m.Mul(m.FromInt(s.MarketDemandCU), mix[k]))
 		supplyK := playerTypeCU(s, k) + competitorTypeCU(s, k)
 		if supplyK < 1 {
 			supplyK = 1
 		}
-		ratio := m.ClampFP(m.Div(m.FromInt(demandK), m.FromInt(supplyK)), SDRatioMin, SDRatioMax)
+		ratio := m.ClampFP(m.Div(m.FromInt(demandK), m.FromInt(supplyK)), loBand, hiBand)
 		s.TypePrice[k] = m.ClampFP(m.Mul(YearBasePrice(k, s.Height), ratio), TypePriceFloor, TypePriceCeil)
 	}
 }

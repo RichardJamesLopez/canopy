@@ -141,7 +141,7 @@ func TestDeterminismHash(t_ *testing.T) {
 // goldenHash pins the canonical StateHash of a fixed trajectory. If this
 // changes, either the rules or the codec changed — bump the relevant version
 // deliberately and update this value. It must be stable across OS/arch.
-const goldenHash = "195a7a4c2a53978b74915b5be0a7d83f42ae6c23f9a805804039253cfda0156f"
+const goldenHash = "347b5c827901efb7f07139e0a993eef659067f41b966fd1607425a8861b1feea"
 
 func TestGoldenTrajectory(t_ *testing.T) {
 	final, _ := runSeason(seasonSeed(0xA5), DefaultPolicy(), 240, 3)
@@ -215,7 +215,7 @@ func TestGameOver(t_ *testing.T) {
 	seed := seasonSeed(0xDE)
 	s := NewSeason(seed, 0)
 	p := DefaultPolicy()
-	_ = Buy(&s, p, t.AccGPU, 300) // big capex, but no power/cooling → zero production
+	_ = Buy(&s, p, t.AccGPU, 155) // big capex (~$992k of $1M), but no power/cooling → zero production
 	var endHeight uint64
 	for h := uint64(0); h < 40; h++ {
 		s, _ = Step(s, p, t.StepContext{Height: h, Seed: m.BlockSeed(seed, h, 1), RulesVersion: RulesVersion})
