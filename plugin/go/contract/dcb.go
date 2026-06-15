@@ -121,13 +121,33 @@ type dcbHost struct{ c *Contract }
 
 var _ dfsm.Host = dcbHost{}
 
-func (h dcbHost) Height() uint64 { return h.c.dcbHeight }
+// dcbStepsPerBlock advances this many engine-weeks per chain block. One Canopy
+// block is ~20s, so 4 ≈ one game-month per block (a game-year ≈ 13 blocks ≈
+// 4.3 min). Game-time = chain blocks × dcbStepsPerBlock; this is the only lever
+// since chain block time is fixed.
+const dcbStepsPerBlock = 4
 
-func (h dcbHost) Seed(height uint64) [32]byte {
-	var out [32]byte
-	if v, ok := (dcbStore{h.c}).Get(dcbSeedKey(height)); ok && len(v) == 32 {
-		copy(out[:], v)
+// Height is the target engine height (game-weeks) for catch-up: chain height
+// scaled by the steps-per-block ratio.
+func (h dcbHost) Height() uint64 { return h.c.dcbHeight * dcbStepsPerBlock }
+
+// Seed derives a per-engine-step seed from the owning chain block's recorded
+// seed, so the dcbStepsPerBlock sub-steps within a block are distinct yet
+// deterministic and verifiable.
+func (h dcbHost) Seed(engineHeight uint64) [32]byte {
+	chainBlock := engineHeight / dcbStepsPerBlock
+	sub := engineHeight % dcbStepsPerBlock
+	var block [32]byte
+	if v, ok := (dcbStore{h.c}).Get(dcbSeedKey(chainBlock)); ok && len(v) == 32 {
+		copy(block[:], v)
 	}
+	hh := sha256.New()
+	hh.Write(block[:])
+	var sb [8]byte
+	binary.BigEndian.PutUint64(sb[:], sub)
+	hh.Write(sb[:])
+	var out [32]byte
+	copy(out[:], hh.Sum(nil))
 	return out
 }
 
