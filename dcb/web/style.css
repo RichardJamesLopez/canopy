@@ -1,0 +1,295 @@
+/* DCB web — "Ayu Light" (from the Claude Design light-theme study). Clean white
+   base, soft pastel + blue syntax accents, orange active tab, lime cash. No CRT
+   scanline or neon glow — crisp reads better light. Fixed layout, no reflow. */
+
+:root {
+  --bg: #ffffff;            /* app / panel base */
+  --panel: #f8f9fb;         /* tiles & panels */
+  --fg: #5c6166;            /* primary (strong) text */
+  --mid: #6b7178;           /* secondary text */
+  --dim: #a7adb3;           /* labels / hints / idle */
+
+  --accent: #fa8d3e;        /* orange — active tab, primary action */
+  --brand: #399ee6;         /* blue — logo / wordmark */
+  --cash: #86b300;          /* lime — cash / positive / good */
+  --red: #f07171;           /* negative / danger */
+
+  /* legacy names kept so existing markup + inline app.js styles resolve to
+     sensible Ayu colors without editing every call site */
+  --green: #86b300;
+  --green-bright: #5f8000;  /* emphasized value text, readable on white */
+  --green-label: #6b7178;
+  --green-dim: #a7adb3;
+  --green-dimmer: #8b9197;
+  --green-faint: #b9bfc5;
+
+  /* Ayu resource palette (Compute / Power / Cooling / Land / Staff / Network) */
+  --spend: #86b300;
+  --c-compute: #399ee6;
+  --c-power: #fa8d3e;
+  --c-cooling: #55b4d4;
+  --c-land: #86b300;
+  --c-staff: #a37acc;
+  --c-network: #e6618f;
+
+  --bd-16: #f0f0f3;
+  --bd-22: #ededf0;
+  --bd-25: #e9e9ee;
+  --bd-30: #e3e3ea;
+  --bd-35: #dcdce4;
+  --cell-off: #eef0f3;
+}
+
+* { box-sizing: border-box; }
+@keyframes blink { 50% { opacity: .35; } }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #e9ebee;
+  color: var(--fg);
+  font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#crt {
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 28px 16px 64px;
+}
+
+#app {
+  position: relative;
+  width: 1080px;
+  max-width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border, #ededf0);
+  border-radius: 14px;
+  padding: 26px 30px 22px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .06), 0 14px 36px rgba(0, 0, 0, .09);
+  overflow: hidden;
+}
+#app > * { position: relative; z-index: 1; }
+
+/* ---- status bar (logo + stats) ---- */
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--bd-22);
+}
+.logo { display: flex; align-items: center; gap: 13px; }
+.rack {
+  position: relative; width: 36px; height: 42px;
+  border: 1.5px solid rgba(57, 158, 230, .55); border-radius: 6px;
+  background: var(--panel);
+  padding: 5px 4px; display: flex; flex-direction: column; gap: 4px;
+}
+.rack .u {
+  flex: 1; border-radius: 2px; background: rgba(0, 0, 0, .04);
+  display: flex; align-items: center; gap: 4px; padding: 0 4px;
+}
+.rack .led { width: 5px; height: 5px; border-radius: 50%; }
+.rack .lead { flex: 1; height: 2px; border-radius: 1px; background: rgba(0, 0, 0, .1); }
+.wordmark { line-height: 1; }
+.wordmark .name {
+  font-size: 20px; font-weight: 700; letter-spacing: .16em; color: var(--brand);
+}
+.wordmark .sub { font-size: 9px; letter-spacing: .28em; color: var(--dim); margin-top: 5px; }
+
+.stat { font-size: 13px; color: var(--mid); }
+.stat b { color: var(--fg); font-weight: 700; }
+.stat b.neg { color: var(--red); }
+.stat b.star { color: var(--c-power); }
+.stat.shipped b { color: var(--c-compute); }
+
+/* "time is moving" tick bar — fills over each 5s week then snaps back */
+.tick-bar { display:inline-block; width:54px; height:7px; margin:0 2px 0 7px; vertical-align:middle;
+  background:var(--bd-22); border-radius:4px; overflow:hidden; }
+.tick-fill { display:block; height:100%; background:var(--brand); border-radius:4px; }
+
+/* config-card: the four configurable levers on the Cost tab get a clear border */
+.config-card {
+  border: 1px solid var(--bd-35); border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 16px;
+  background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.config-card .card-head { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+.config-card table { margin-top: 2px; }
+
+/* compact row of three stat cards, pinned at the top of the first 3 tabs */
+.tiles-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+
+/* tooltip info chip */
+.info {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:15px; height:15px; border-radius:50%; font-size:10px; font-weight:700;
+  color:var(--mid); border:1px solid var(--bd-35); cursor:help; align-self:center;
+}
+.info:hover { color:var(--accent); border-color:var(--accent); }
+
+/* ---- tabs ---- */
+#tabs { display: flex; gap: 8px; padding: 16px 0 22px; }
+.tab {
+  cursor: pointer; padding: 7px 14px; border-radius: 6px; font-size: 13px;
+  white-space: nowrap; border: 1px solid var(--bd-25); color: var(--dim);
+}
+.tab:hover { color: var(--fg); }
+.tab.active { background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent); }
+
+#content { min-height: 372px; }
+
+/* money hero */
+.hero {
+  border: 1px solid rgba(250, 141, 62, .45);
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(134, 179, 0, .10), rgba(134, 179, 0, .02) 60%, rgba(134, 179, 0, 0));
+  padding: 15px 22px 13px;
+  margin-bottom: 16px;
+}
+.hero-label { font-size: 11px; letter-spacing: .26em; color: var(--dim); }
+.hero-num {
+  font-size: 40px; font-weight: 800; line-height: 1.05; color: var(--cash);
+  font-variant-numeric: tabular-nums; margin: 4px 0 2px;
+}
+.hero-num.bad { color: var(--red); }
+.hero-delta { font-size: 13px; }
+.big { font-size: 18px; }
+
+/* compact cash card shown on non-Dashboard tabs */
+.cashstrip {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  border: 1px solid rgba(250, 141, 62, .4);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(134, 179, 0, .09), rgba(134, 179, 0, 0));
+  padding: 11px 18px; margin-bottom: 18px;
+}
+.cashstrip .cs-label { font-size: 10px; letter-spacing: .26em; color: var(--dim); }
+.cashstrip .cs-num {
+  font-size: 26px; font-weight: 800; line-height: 1; color: var(--cash);
+  font-variant-numeric: tabular-nums;
+}
+.cashstrip .cs-num.bad { color: var(--red); }
+.cashstrip .cs-meta { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+
+/* thin cash-focus header bar: cash + net/wk + the three key cards inline */
+.cashbar {
+  display: flex; align-items: stretch; gap: 0; flex-wrap: nowrap;
+  border: 1px solid rgba(250, 141, 62, .4); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(134, 179, 0, .09), rgba(134, 179, 0, 0));
+  padding: 11px 22px; margin-bottom: 18px; overflow-x: auto;
+}
+.cashbar .cb-div { width: 1px; background: var(--bd-22); margin: 0 18px; flex-shrink: 0; }
+.cashbar .cb-cash { display: flex; flex-direction: column; justify-content: center; flex: 1.4 1 0; min-width: 0; }
+.cashbar .cb-cashnum {
+  font-size: 26px; font-weight: 800; line-height: 1; color: var(--cash);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cashbar .cb-cashnum.bad { color: var(--red); }
+.cashbar .cb-mini { font-size: 9px; letter-spacing: .12em; color: var(--dim); }
+.cashbar .cb-cell { display: flex; flex-direction: column; justify-content: center; flex: 1 1 0; min-width: 130px; }
+.cashbar .cb-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 9.5px; letter-spacing: .16em; color: var(--dim); font-weight: 600; margin-bottom: 7px;
+}
+.cashbar .cb-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.cashbar .cb-val { font-size: 19px; font-weight: 700; color: var(--fg); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cashbar .cb-val .cb-unit { font-size: 12px; font-weight: 500; color: var(--mid); }
+.cashbar .cb-sub { font-size: 11px; margin-top: 6px; white-space: nowrap; }
+
+/* secondary metric tiles on the dashboard */
+.tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; margin-top: 14px; }
+.tile { border: 1px solid var(--bd-22); border-radius: 9px; background: var(--panel); padding: 12px 14px; }
+.tile-head { display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: .13em; color: var(--dim); margin-bottom: 8px; }
+.tile-val { font-size: 18px; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile-sub { font-size: 10.5px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.blink { animation: blink 1s step-start infinite; }
+
+/* game-over overlay */
+.overlay { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; }
+.over-title { font-size: 16px; letter-spacing: .18em; font-weight: 700; }
+.over-num { font-size: 40px; font-weight: 800; color: var(--cash); }
+
+/* funding control on Costs */
+.funding { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--bd-22); }
+.funding-head { font-size: 13px; letter-spacing: .1em; color: var(--fg); font-weight: 700; margin-bottom: 8px; }
+.funding-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.funding-btns .ctl { background: var(--bg); }
+
+/* section heading */
+.sec { display: flex; align-items: baseline; gap: 10px; margin-bottom: 22px; }
+.sec.spaced { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--bd-22); }
+.sec .h { color: var(--fg); font-weight: 700; font-size: 14px; letter-spacing: .14em; }
+.sec .note { color: var(--mid); font-size: 12.5px; }
+
+/* ---- allocate / cost rows: grid so the value never overlaps the steppers ---- */
+.alloc-row {
+  display: grid; grid-template-columns: 130px 1fr auto auto;
+  gap: 14px; align-items: center; margin-bottom: 16px;
+}
+.alloc-label { font-size: 14px; font-weight: 600; }
+.alloc-val { text-align: left; font-size: 14px; font-weight: 700; white-space: nowrap; color: var(--fg); }
+
+.pol-row { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+
+.step {
+  width: 30px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--bd-35); border-radius: 4px; background: var(--bg);
+  color: var(--fg); font-size: 16px; cursor: pointer; font-family: inherit;
+}
+.step:hover { background: rgba(0, 0, 0, .04); border-color: var(--accent); color: var(--accent); }
+
+/* policy rows with dotted leaders */
+.policy { margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--bd-22); }
+.pol-label { width: 140px; font-size: 14px; color: var(--mid); }
+.leader { flex: 1; border-bottom: 1px dotted var(--bd-30); height: 1px; }
+.pol-val { text-align: right; font-size: 15px; font-weight: 600; color: var(--green-bright); }
+.note-line { color: var(--c-power); font-size: 12.5px; margin-bottom: 14px; }
+
+/* ---- generic panels (dashboard / regions / revenue / leaderboard) ---- */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid .full { grid-column: 1 / -1; }
+.panel { background: var(--panel); border: 1px solid var(--bd-22); border-radius: 10px; padding: 10px 14px 12px; }
+.panel h2 {
+  margin: 0 0 8px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg);
+}
+.row { display: flex; justify-content: space-between; gap: 12px; }
+.row .k { color: var(--mid); }
+.muted { color: var(--dim); }
+.good { color: var(--cash); }
+.bad  { color: var(--red); }
+.bright { color: var(--green-bright); }
+
+.bar { letter-spacing: -1px; }
+.bar .fill { color: var(--green); }
+.bar .empty { color: var(--cell-off); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: right; padding: 3px 6px; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--dim); font-weight: 400; border-bottom: 1px solid var(--bd-22); }
+td { border-bottom: 1px solid var(--bd-16); }
+tr.lb-you td { color: var(--green-bright); font-weight: 700; }
+.flag-on { color: var(--green); }
+.flag-off { color: var(--dim); }
+
+/* ---- controls footer ---- */
+#controls {
+  margin-top: 14px; padding-top: 18px; border-top: 1px solid var(--bd-22);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px;
+}
+.ctl {
+  cursor: pointer; border: 1px solid var(--bd-30); border-radius: 6px;
+  padding: 6px 12px; color: var(--fg);
+}
+.ctl:hover { background: rgba(0, 0, 0, .04); border-color: var(--accent); color: var(--accent); }
+#controls .run { color: var(--cash); font-weight: 600; margin-left: 4px; }
+#controls .keys { margin-left: auto; color: var(--dim); font-size: 12px; }
+
+.boot { color: var(--dim); padding: 60px; text-align: center; }

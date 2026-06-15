@@ -1,0 +1,5 @@
+# Go build outputs (the deployable web/dcb.wasm is committed intentionally)
+/faucet/faucet
+/faucet/dcbfaucet
+/app/app
+*.test
