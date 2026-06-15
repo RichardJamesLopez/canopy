@@ -39,6 +39,50 @@ message MessageSend {
   uint64 amount = 3;
 }
 
+// ---- DCB (Data Center Builder) messages ----
+// MessageDcbStartRun begins a player's season run.
+message MessageDcbStartRun {
+  bytes address = 1; // player account (also the signer)
+  string name = 2;   // leaderboard display name
+}
+// MessageDcbSetPolicy commits a new allocation policy (canonical EncodePolicy bytes).
+message MessageDcbSetPolicy {
+  bytes address = 1;
+  bytes policy = 2;
+}
+// MessageDcbCheckpoint realizes idle gains by catching the player up to the head.
+message MessageDcbCheckpoint {
+  bytes address = 1;
+}
+// MessageDcbBuy purchases qty units of accelerator type `kind` (0=GPU..4=MTIA).
+message MessageDcbBuy {
+  bytes address = 1;
+  uint32 kind = 2;
+  int64 qty = 3;
+}
+// MessageDcbSell liquidates qty units of accelerator type `kind`.
+message MessageDcbSell {
+  bytes address = 1;
+  uint32 kind = 2;
+  int64 qty = 3;
+}
+// MessageDcbHire adds n people (multiple of 10).
+message MessageDcbHire {
+  bytes address = 1;
+  int64 n = 2;
+}
+// MessageDcbFire removes n people (multiple of 10).
+message MessageDcbFire {
+  bytes address = 1;
+  int64 n = 2;
+}
+// MessageDcbBuyInfra buys qty of a shared-infra kind (0=power,1=cooling,2=land,3=network).
+message MessageDcbBuyInfra {
+  bytes address = 1;
+  uint32 infra = 2;
+  int64 qty = 3;
+}
+
 // FeeParams is the parameter space that defines various amounts for transaction fees
 message FeeParams {
   // send_fee: is the fee amount (in uCNPY) for Message Send

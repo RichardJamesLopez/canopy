@@ -16,12 +16,20 @@ import (
 
 // PluginConfig: the configuration of the contract
 var ContractConfig = &PluginConfig{
-	Name:                  "go_plugin_contract",
+	Name:                  "dcb_contract",
 	Id:                    1,
 	Version:               1,
-	SupportedTransactions: []string{"send"},
+	SupportedTransactions: []string{"send", "dcb_start_run", "dcb_set_policy", "dcb_checkpoint", "dcb_buy", "dcb_sell", "dcb_hire", "dcb_fire", "dcb_buy_infra"},
 	TransactionTypeUrls: []string{
 		"type.googleapis.com/types.MessageSend",
+		"type.googleapis.com/types.MessageDcbStartRun",
+		"type.googleapis.com/types.MessageDcbSetPolicy",
+		"type.googleapis.com/types.MessageDcbCheckpoint",
+		"type.googleapis.com/types.MessageDcbBuy",
+		"type.googleapis.com/types.MessageDcbSell",
+		"type.googleapis.com/types.MessageDcbHire",
+		"type.googleapis.com/types.MessageDcbFire",
+		"type.googleapis.com/types.MessageDcbBuyInfra",
 	},
 	EventTypeUrls: nil,
 }
@@ -52,6 +60,7 @@ type Contract struct {
 	FSMConfig *PluginFSMConfig // fsm configuration
 	plugin    *Plugin          // plugin connection
 	fsmId     uint64           // the id of the requesting fsm
+	dcbHeight uint64           // current block height, cached each BeginBlock (DCB)
 }
 
 // Genesis() implements logic to import a json file to create the state at height 0 and export the state at any height
@@ -60,7 +69,8 @@ func (c *Contract) Genesis(_ *PluginGenesisRequest) *PluginGenesisResponse {
 }
 
 // BeginBlock() is code that is executed at the start of `applying` the block
-func (c *Contract) BeginBlock(_ *PluginBeginRequest) *PluginBeginResponse {
+func (c *Contract) BeginBlock(request *PluginBeginRequest) *PluginBeginResponse {
+	c.dcbHeight = request.Height // cache height for DCB lazy catch-up
 	return &PluginBeginResponse{}
 }
 
@@ -96,6 +106,22 @@ func (c *Contract) CheckTx(request *PluginCheckRequest) *PluginCheckResponse {
 	switch x := msg.(type) {
 	case *MessageSend:
 		return c.CheckMessageSend(x)
+	case *MessageDcbStartRun:
+		return c.checkDcb(x.Address)
+	case *MessageDcbSetPolicy:
+		return c.checkDcb(x.Address)
+	case *MessageDcbCheckpoint:
+		return c.checkDcb(x.Address)
+	case *MessageDcbBuy:
+		return c.checkDcb(x.Address)
+	case *MessageDcbSell:
+		return c.checkDcb(x.Address)
+	case *MessageDcbHire:
+		return c.checkDcb(x.Address)
+	case *MessageDcbFire:
+		return c.checkDcb(x.Address)
+	case *MessageDcbBuyInfra:
+		return c.checkDcb(x.Address)
 	default:
 		return &PluginCheckResponse{Error: ErrInvalidMessageCast()}
 	}
@@ -112,13 +138,31 @@ func (c *Contract) DeliverTx(request *PluginDeliverRequest) *PluginDeliverRespon
 	switch x := msg.(type) {
 	case *MessageSend:
 		return c.DeliverMessageSend(x, request.Tx.Fee)
+	case *MessageDcbStartRun:
+		return c.DeliverDcbStartRun(x)
+	case *MessageDcbSetPolicy:
+		return c.DeliverDcbSetPolicy(x)
+	case *MessageDcbCheckpoint:
+		return c.DeliverDcbCheckpoint(x)
+	case *MessageDcbBuy:
+		return c.DeliverDcbBuy(x)
+	case *MessageDcbSell:
+		return c.DeliverDcbSell(x)
+	case *MessageDcbHire:
+		return c.DeliverDcbHire(x)
+	case *MessageDcbFire:
+		return c.DeliverDcbFire(x)
+	case *MessageDcbBuyInfra:
+		return c.DeliverDcbBuyInfra(x)
 	default:
 		return &PluginDeliverResponse{Error: ErrInvalidMessageCast()}
 	}
 }
 
 // EndBlock() is code that is executed at the end of 'applying' a block
-func (c *Contract) EndBlock(_ *PluginEndRequest) *PluginEndResponse {
+func (c *Contract) EndBlock(request *PluginEndRequest) *PluginEndResponse {
+	// record this block's verifiable seed so DCB catch-up can replay it later
+	c.recordDcbSeed(request.Height, request.ProposerAddress)
 	return &PluginEndResponse{}
 }
 
