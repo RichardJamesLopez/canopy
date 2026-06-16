@@ -117,13 +117,11 @@ func Sell(s *t.State, kind int, qty int64) error {
 	return nil
 }
 
-// Hire adds n people (must be a positive multiple of 10).
+// Hire adds n people. n must be positive; the client picks the increment (a
+// tiered ladder — round up to 10, then +10 to 100, then +10% of headcount).
 func Hire(s *t.State, n int64) error {
 	if n <= 0 {
 		return ErrBadQty
-	}
-	if n%10 != 0 {
-		return ErrBadStep
 	}
 	cost := m.Mul(m.FromInt(n), HireCostAt(s.Height))
 	if !affordable(s, cost) {
@@ -134,13 +132,10 @@ func Hire(s *t.State, n int64) error {
 	return nil
 }
 
-// Fire removes n people (positive multiple of 10, no severance/refund).
+// Fire removes n people (positive, no severance/refund).
 func Fire(s *t.State, n int64) error {
 	if n <= 0 {
 		return ErrBadQty
-	}
-	if n%10 != 0 {
-		return ErrBadStep
 	}
 	if n > s.StaffSU {
 		n = s.StaffSU

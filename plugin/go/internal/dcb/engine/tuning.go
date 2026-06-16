@@ -62,7 +62,7 @@ var (
 const (
 	UnlockSlotCU = 1  // CU per server unit, used only for unlock-threshold sizing
 	StarterAcre  = 1  // free starter acres in the home region
-	StarterStaff = 10 // free starting people
+	StarterStaff = 1 // free starting person (a one-person shop; hire as you grow)
 )
 
 // Dollar costs and rates. Per-WEEK opex magnitudes (1 block = 1 week).

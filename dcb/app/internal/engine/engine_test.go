@@ -66,8 +66,8 @@ func ensureSupport(s *t.State, p t.Policy) {
 	if d := acreWant - acreHave; d > 0 {
 		_ = BuyLand(s, p, d)
 	}
-	if d := roundUp10(staffWant - s.StaffSU); d > 0 {
-		_ = Hire(s, d)
+	if d := staffWant - s.StaffSU; d > 0 {
+		_ = Hire(s, d) // hire exactly what the fleet needs (hiring is no longer 10-bound)
 	}
 }
 
@@ -75,8 +75,8 @@ func ensureSupport(s *t.State, p t.Policy) {
 // types, keeping shared infra ahead of the fleet. Deterministic in state.
 func growBalanced(s *t.State, p t.Policy) {
 	ensureSupport(s, p)
-	buffer := m.FromInt(1_000_000)  // keep a solvency reserve (opex runs ahead of capex)
-	headroom := m.FromInt(500_000)
+	buffer := m.FromInt(200_000)  // keep a solvency reserve (opex runs ahead of capex)
+	headroom := m.FromInt(200_000)
 	for s.Capital-buffer > headroom {
 		// Don't over-build past what the market can absorb: selling is capped by
 		// demand, but power+staff are paid on every unit owned. Stop once installed
@@ -153,7 +153,7 @@ func TestDeterminismHash(t_ *testing.T) {
 // goldenHash pins the canonical StateHash of a fixed trajectory. If this
 // changes, either the rules or the codec changed — bump the relevant version
 // deliberately and update this value. It must be stable across OS/arch.
-const goldenHash = "7d5b560a6a2b33d3d793c69af2990a49466209a7ef205ae8bb1824444cac7b18"
+const goldenHash = "f48bbcdfb9a2d71783996eccc98f2d1f4f65be10661d9ed6ebbeea4eee8ed613"
 
 func TestGoldenTrajectory(t_ *testing.T) {
 	final, _ := runSeason(seasonSeed(0xA5), DefaultPolicy(), 240, 3)
@@ -227,7 +227,7 @@ func TestGameOver(t_ *testing.T) {
 	seed := seasonSeed(0xDE)
 	s := NewSeason(seed, 0)
 	p := DefaultPolicy()
-	_ = Buy(&s, p, t.AccGPU, 600) // big capex (~$3.84M of $4M), but no power/cooling → zero production
+	_ = Buy(&s, p, t.AccGPU, 155) // big capex (~$992k of $1M), but no power/cooling → zero production
 	var endHeight uint64
 	for h := uint64(0); h < 40; h++ {
 		s, _ = Step(s, p, t.StepContext{Height: h, Seed: m.BlockSeed(seed, h, 1), RulesVersion: RulesVersion})

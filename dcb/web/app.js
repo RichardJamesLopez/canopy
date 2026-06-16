@@ -213,6 +213,9 @@ const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", 
 
 // tier is the scaling buy/sell increment for a given current quantity.
 function tier(qty) { return qty < 100 ? 10 : qty < 1000 ? 50 : qty < 10000 ? 250 : 1000; }
+// staffStep is the tiered hire/fire increment: round up to 10, then +10 to 100,
+// then +10% of current headcount (rounded up).
+function staffStep(cur) { return cur < 10 ? 10 - cur : cur < 100 ? 10 : Math.max(10, Math.ceil(cur * 0.1)); }
 
 function submitPolicy(mut) {
   const p = JSON.parse(JSON.stringify(vm.policy));
@@ -526,7 +529,7 @@ function renderCost() {
     ["Power",   `${comma(v.powerPU)} PU`,     money(v.costPU)+"/PU",       INFRA_COLORS[0], `act.infra(0,${pInc})`, pInc, null],
     ["Cooling", `${comma(v.coolingKU)} KU`,   money(v.costKU)+"/KU",       INFRA_COLORS[1], `act.infra(1,${cInc})`, cInc, null],
     ["Land",    `${comma(v.landAcres)} acres`, money(v.costAcre)+"/acre",   INFRA_COLORS[2], "act.infra(2,1)",        1,    null],
-    ["Staff",   `${comma(v.staffSU)} people`,  money(v.staffWageWk*52)+"/yr · "+money(v.costHire)+" to hire", INFRA_COLORS[3], "act.hire(10)", 10, "act.fire(10)"],
+    ["Staff",   `${comma(v.staffSU)} people`,  money(v.staffWageWk*52)+"/yr · "+money(v.costHire)+" to hire", INFRA_COLORS[3], `act.hire(${staffStep(v.staffSU)})`, staffStep(v.staffSU), `act.fire(${staffStep(v.staffSU)})`],
     ...(v.networkUnlocked ? [["Network", `${comma(v.networkGbps)} Gbps`, money(v.costGbps)+"/Gbps", INFRA_COLORS[4], "act.infra(3,10)", 10, null]] : []),
   ];
   const infraTableRows = infraRows.map(([label, qty, unit, color, addCall, inc, subCall]) => {
@@ -730,7 +733,7 @@ function renderRules() {
     term(`<span style="color:${INFRA_COLORS[0]}">Power (PU)</span> · ${money(v.costPU)}/PU`, "Electricity capacity. The #1 recurring bill — you pay for every PU you own each week, and it climbs over time. Buy roughly what your fleet needs, not far more.") +
     term(`<span style="color:${INFRA_COLORS[1]}">Cooling (KU)</span> · ${money(v.costKU)}/KU`, "Heat-removal capacity. A one-time buy (no weekly bill), but its price is erratic and hotter/denser regions burn more of it.") +
     term(`<span style="color:${INFRA_COLORS[2]}">Land (acres)</span> · ${money(v.costAcre)}/acre`, "Floor space. The fastest-rising cost over the years — secure it before it gets pricey.") +
-    term(`<span style="color:${INFRA_COLORS[3]}">Staff (people)</span> · ${money(v.costHire)}/hire`, "People operate the chips. Hire/fire in tens. The hire price is one-time recruiting; the real cost is the weekly salary (see below).") +
+    term(`<span style="color:${INFRA_COLORS[3]}">Staff (people)</span> · ${money(v.costHire)}/hire`, "People operate the chips. You start as a one-person shop and hire in growing batches (up to 10, then +10s to 100, then +10% of headcount). The hire price is one-time recruiting; the real cost is the weekly salary (see below).") +
     term(`<span style="color:${INFRA_COLORS[4]}">Network (Gbps)</span> · ${money(v.costGbps)}/Gbps`, "Unlocks late (at high net worth); caps how much compute you can actually serve. Buy enough or it bottlenecks delivery."));
 
   h += card("THE PEOPLE — AND WHY LABOR MATTERS", "[ answering: what's the human's role? ]",
