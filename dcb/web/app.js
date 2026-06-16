@@ -320,7 +320,7 @@ function render() {
     document.getElementById("content").innerHTML = renderStart();
     return;
   }
-  document.getElementById("tabs").innerHTML = renderTabs();
+  document.getElementById("tabs").innerHTML = ""; // tabs now render in the header (renderStatus)
   let body;
   if (vm.gameOver && tab !== 3) {
     body = renderOverlay();
@@ -359,9 +359,11 @@ function tickBar() {
 
 function renderStatus() {
   const pres = vm.prestige > 0 ? `<span class="stat">★<b class="star">${vm.prestige}</b></span>` : "";
+  // Tabs live in the header whitespace (right-aligned) once the run has started.
+  const tabs = (started || vm.gameOver) ? `<span class="tabstrip">${renderTabs()}</span>` : "";
   return logo() +
     `<span class="stat">Yr <b>${vm.year}</b> · Wk <b>${vm.weekOfYear}</b>${tickBar()}</span>` +
-    pres;
+    pres + tabs;
 }
 
 function renderTabs() {

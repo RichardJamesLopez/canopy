@@ -143,6 +143,9 @@ html, body {
 
 /* ---- tabs ---- */
 #tabs { display: flex; gap: 8px; padding: 16px 0 22px; }
+#tabs:empty { display: none; }
+/* Tab buttons sit in the header's right-hand whitespace. */
+.tabstrip { margin-left: auto; display: flex; gap: 8px; }
 .tab {
   cursor: pointer; padding: 7px 14px; border-radius: 6px; font-size: 13px;
   white-space: nowrap; border: 1px solid var(--bd-25); color: var(--dim);
