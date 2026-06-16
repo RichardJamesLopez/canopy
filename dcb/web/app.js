@@ -361,7 +361,6 @@ function renderStatus() {
   const pres = vm.prestige > 0 ? `<span class="stat">★<b class="star">${vm.prestige}</b></span>` : "";
   return logo() +
     `<span class="stat">Yr <b>${vm.year}</b> · Wk <b>${vm.weekOfYear}</b>${tickBar()}</span>` +
-    `<span class="stat shipped">Compute organized <b>${comma(vm.score)}</b> CU <span class="muted">${comma(vm.ucd)}/wk</span></span>` +
     pres;
 }
 
