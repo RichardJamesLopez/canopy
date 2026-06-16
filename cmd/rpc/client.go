@@ -40,20 +40,9 @@ func (c *Client) Height() (p *lib.HeightResult, err lib.ErrorI) {
 
 // IndexerBlobs retrieves the indexer blob protobuf and unmarshals it.
 func (c *Client) IndexerBlobs(height uint64) (p *fsm.IndexerBlobs, err lib.ErrorI) {
-	return c.indexerBlobs(height, false)
-}
-
-// IndexerBlobsDelta retrieves changed accounts/pools/validators between current and previous blobs.
-// Other entities remain full snapshots.
-func (c *Client) IndexerBlobsDelta(height uint64) (p *fsm.IndexerBlobs, err lib.ErrorI) {
-	return c.indexerBlobs(height, true)
-}
-
-func (c *Client) indexerBlobs(height uint64, delta bool) (p *fsm.IndexerBlobs, err lib.ErrorI) {
 	p = new(fsm.IndexerBlobs)
 	req := indexerBlobsRequest{
 		heightRequest: heightRequest{Height: height},
-		Delta:         delta,
 	}
 	bz, err := lib.MarshalJSON(req)
 	if err != nil {
@@ -180,8 +169,8 @@ func (c *Client) TransactionsByRecipient(address string, params lib.PageParams) 
 	return
 }
 
-func (c *Client) Account(height uint64, address string) (p *fsm.Account, err lib.ErrorI) {
-	p = new(fsm.Account)
+func (c *Client) Account(height uint64, address string) (p *AccountView, err lib.ErrorI) {
+	p = new(AccountView)
 	err = c.heightAndAddressRequest(AccountRouteName, height, address, p)
 	return
 }
@@ -481,7 +470,7 @@ type AddrOrNickname struct {
 	Nickname string
 }
 
-func (c *Client) KeystoreDelete(addrOrNickname AddrOrNickname) (returned crypto.AddressI, err lib.ErrorI) {
+func (c *Client) KeystoreDelete(addrOrNickname AddrOrNickname, password string) (returned crypto.AddressI, err lib.ErrorI) {
 	returned = new(crypto.Address)
 
 	if addrOrNickname.Address != "" {
@@ -491,7 +480,8 @@ func (c *Client) KeystoreDelete(addrOrNickname AddrOrNickname) (returned crypto.
 			return
 		}
 		err = c.keystoreRequest(KeystoreDeleteRouteName, keystoreRequest{
-			addressRequest: addressRequest{bz},
+			addressRequest:  addressRequest{bz},
+			passwordRequest: passwordRequest{password},
 		}, returned)
 		return
 	}
@@ -499,6 +489,7 @@ func (c *Client) KeystoreDelete(addrOrNickname AddrOrNickname) (returned crypto.
 	if addrOrNickname.Nickname != "" {
 		err = c.keystoreRequest(KeystoreDeleteRouteName, keystoreRequest{
 			nicknameRequest: nicknameRequest{addrOrNickname.Nickname},
+			passwordRequest: passwordRequest{password},
 		}, returned)
 		return
 	}
@@ -575,6 +566,27 @@ func (c *Client) TxSend(from AddrOrNickname, rec string, amt uint64, pwd string,
 	return c.transactionRequest(TxSendRouteName, txReq, submit)
 }
 
+func (c *Client) TxSendVesting(from AddrOrNickname, rec string, amt, vestingStartHeight, vestingCliffHeight, vestingEndHeight uint64, pwd string, submit bool, optFee uint64) (hash *string, tx json.RawMessage, e lib.ErrorI) {
+	txReq := txSendVesting{
+		Fee:                optFee,
+		Amount:             amt,
+		Output:             rec,
+		VestingStartHeight: vestingStartHeight,
+		VestingCliffHeight: vestingCliffHeight,
+		VestingEndHeight:   vestingEndHeight,
+		Submit:             submit,
+		Password:           pwd,
+	}
+
+	var err lib.ErrorI
+	txReq.fromFields, err = getFrom(from.Address, from.Nickname)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return c.transactionRequest(TxSendVestingRouteName, txReq, submit)
+}
+
 func (c *Client) TxStake(addrOrNick AddrOrNickname, netAddr string, amt uint64, committees, output string, signer AddrOrNickname, delegate, earlyWithdrawal bool, pwd string, submit bool, optFee uint64) (hash *string, tx json.RawMessage, e lib.ErrorI) {
 	return c.txStake(addrOrNick, netAddr, amt, committees, output, delegate, earlyWithdrawal, signer, pwd, submit, false, optFee)
 }
@@ -618,12 +630,13 @@ func (c *Client) TxChangeParam(from AddrOrNickname, pSpace, pKey, pValue string,
 }
 
 func (c *Client) TxDaoTransfer(from AddrOrNickname, amt, startBlk, endBlk uint64,
-	pwd string, submit bool, optFee uint64) (hash *string, tx json.RawMessage, e lib.ErrorI) {
+	pwd string, submit bool, optFee uint64, mint bool) (hash *string, tx json.RawMessage, e lib.ErrorI) {
 	txReq := txDaoTransfer{
 		Fee:      optFee,
 		Submit:   submit,
 		Password: pwd,
 		Amount:   amt,
+		Mint:     mint,
 		txChangeParamRequest: txChangeParamRequest{
 			StartBlock: startBlk,
 			EndBlock:   endBlk,
