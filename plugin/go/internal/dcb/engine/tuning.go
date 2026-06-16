@@ -44,11 +44,11 @@ type AccelProfile struct {
 // that are power- and land-hungry; TPU/Maia are balanced; Trainium is the lean,
 // modest-output efficiency play.
 var Accel = [t.NACCEL]AccelProfile{
-	t.AccGPU:      {CUPerUnit: 2, PowerPerUnit: dcbmath.FP(2_400_000), CoolPerUnit: dcbmath.FP(2_200_000), StaffPerUnit: dcbmath.FP(14_000), AcrePerUnit: dcbmath.FP(20_000)},
-	t.AccTPU:      {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(1_000_000), CoolPerUnit: dcbmath.FP(950_000), StaffPerUnit: dcbmath.FP(7_000), AcrePerUnit: dcbmath.FP(9_000)},
-	t.AccTrainium: {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(820_000), CoolPerUnit: dcbmath.FP(780_000), StaffPerUnit: dcbmath.FP(6_000), AcrePerUnit: dcbmath.FP(8_500)},
-	t.AccMaia:     {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(920_000), CoolPerUnit: dcbmath.FP(880_000), StaffPerUnit: dcbmath.FP(6_800), AcrePerUnit: dcbmath.FP(9_500)},
-	t.AccMTIA:     {CUPerUnit: 2, PowerPerUnit: dcbmath.FP(2_000_000), CoolPerUnit: dcbmath.FP(1_900_000), StaffPerUnit: dcbmath.FP(13_000), AcrePerUnit: dcbmath.FP(19_000)},
+	t.AccGPU:      {CUPerUnit: 2, PowerPerUnit: dcbmath.FP(2_400_000), CoolPerUnit: dcbmath.FP(2_200_000), StaffPerUnit: dcbmath.FP(7_000), AcrePerUnit: dcbmath.FP(20_000)},
+	t.AccTPU:      {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(1_000_000), CoolPerUnit: dcbmath.FP(950_000), StaffPerUnit: dcbmath.FP(3_500), AcrePerUnit: dcbmath.FP(9_000)},
+	t.AccTrainium: {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(820_000), CoolPerUnit: dcbmath.FP(780_000), StaffPerUnit: dcbmath.FP(3_000), AcrePerUnit: dcbmath.FP(8_500)},
+	t.AccMaia:     {CUPerUnit: 1, PowerPerUnit: dcbmath.FP(920_000), CoolPerUnit: dcbmath.FP(880_000), StaffPerUnit: dcbmath.FP(3_400), AcrePerUnit: dcbmath.FP(9_500)},
+	t.AccMTIA:     {CUPerUnit: 2, PowerPerUnit: dcbmath.FP(2_000_000), CoolPerUnit: dcbmath.FP(1_900_000), StaffPerUnit: dcbmath.FP(6_500), AcrePerUnit: dcbmath.FP(19_000)},
 }
 
 // Reciprocity ramp rates: how fast the smoothed operable fraction moves toward
@@ -67,9 +67,12 @@ const (
 
 // Dollar costs and rates. Per-WEEK opex magnitudes (1 block = 1 week).
 var (
-	StaffWage = dcbmath.FromInt(185)  // $/week per person
-	MaintRate = dcbmath.FP(460_000)   // $0.46/week per CU
-	PowerCost = dcbmath.FP(1_150_000) // $1.15/PU/week (home-region base)
+	// $100k/yr skilled data-center-ops salary, applied prorated per week (≈$1,923/wk).
+	// Rises 15%/yr (LaborInflPerYear) — labor is the fastest-climbing opex.
+	StaffWage = dcbmath.FromInt(100_000) / BlocksPerYear // $/week per person
+	MaintRate = dcbmath.FP(1_000_000) // $1/week per CU
+	PowerCost = dcbmath.FromInt(12)   // $12/PU/week (home-region base) — electricity is
+	// a major recurring cost (≈10x the old rate); grows toward the top cost at scale.
 )
 
 // Buy prices for shared infra (per unit / per acre / per person).

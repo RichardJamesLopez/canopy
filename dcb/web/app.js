@@ -77,7 +77,7 @@ function loop(now) {
   if (clk) clk.innerHTML = clockInner();
   else document.getElementById("statusbar").innerHTML = renderStatus();
   const fn = LIVE_TABS[tab];
-  if (fn && !(vm.gameOver && tab !== 3)) {
+  if (fn && !(vm.gameOver && tab !== 3 && tab !== 4)) {
     const strip = (tab !== 0 && !vm.gameOver) ? `<div id="cashstrip">${headerBar()}</div>` : "";
     document.getElementById("content").innerHTML = strip + fn();
   } else {
@@ -256,12 +256,12 @@ function onKey(e) {
     if (k === " " || k === "Enter") { e.preventDefault(); act.start(); }
     return;
   }
-  if (k >= "1" && k <= "4") act.tab(+k - 1);
+  if (k >= "1" && k <= "5") act.tab(+k - 1);
   else if (k === " ") { e.preventDefault(); act.play(); }
   else if (k === "+" || k === "=") act.speed(1);
   else if (k === "-" || k === "_") act.speed(-1);
   else if (k === "f") act.ff();
-  else if (k === "Tab") { e.preventDefault(); act.tab((tab + 1) % 4); }
+  else if (k === "Tab") { e.preventDefault(); act.tab((tab + 1) % 5); }
 }
 
 // ---- leaderboard (localStorage stand-in for the on-chain boards) ----
@@ -325,10 +325,10 @@ function render() {
   }
   document.getElementById("tabs").innerHTML = ""; // tabs now render in the header (renderStatus)
   let body;
-  if (vm.gameOver && tab !== 3) {
+  if (vm.gameOver && tab !== 3 && tab !== 4) {
     body = renderOverlay();
   } else {
-    const inner = [renderDash, renderCost, renderRevenue, renderBoard][tab]();
+    const inner = [renderDash, renderCost, renderRevenue, renderBoard, renderRules][tab]();
     const strip = (tab !== 0 && !vm.gameOver) ? `<div id="cashstrip">${headerBar()}</div>` : "";
     body = strip + inner;
   }
@@ -377,7 +377,7 @@ function clockInner() {
 }
 
 function renderTabs() {
-  return ["Dashboard", "Cost", "Revenue", "Leaderboard"].map((n, i) =>
+  return ["Dashboard", "Cost", "Revenue", "Leaderboard", "Rules"].map((n, i) =>
     `<span class="tab ${i === tab ? "active" : ""}" onclick="act.tab(${i})">${i + 1} ${n}</span>`).join("");
 }
 
@@ -526,7 +526,7 @@ function renderCost() {
     ["Power",   `${comma(v.powerPU)} PU`,     money(v.costPU)+"/PU",       INFRA_COLORS[0], `act.infra(0,${pInc})`, pInc, null],
     ["Cooling", `${comma(v.coolingKU)} KU`,   money(v.costKU)+"/KU",       INFRA_COLORS[1], `act.infra(1,${cInc})`, cInc, null],
     ["Land",    `${comma(v.landAcres)} acres`, money(v.costAcre)+"/acre",   INFRA_COLORS[2], "act.infra(2,1)",        1,    null],
-    ["Staff",   `${comma(v.staffSU)} people`,  money(v.costHire)+"/person", INFRA_COLORS[3], "act.hire(10)",          10,   "act.fire(10)"],
+    ["Staff",   `${comma(v.staffSU)} people`,  money(v.staffWageWk*52)+"/yr · "+money(v.costHire)+" to hire", INFRA_COLORS[3], "act.hire(10)", 10, "act.fire(10)"],
     ...(v.networkUnlocked ? [["Network", `${comma(v.networkGbps)} Gbps`, money(v.costGbps)+"/Gbps", INFRA_COLORS[4], "act.infra(3,10)", 10, null]] : []),
   ];
   const infraTableRows = infraRows.map(([label, qty, unit, color, addCall, inc, subCall]) => {
@@ -671,6 +671,87 @@ function renderBoard() {
       <div class="panel full"><h2>This Week</h2>${list(weekly)}</div>
     </div>
     ${footer}`;
+}
+
+// renderRules is the encyclopedia / glossary tab: defines every chip, region and
+// infrastructure input from live tuning (so it never drifts from the engine),
+// explains the interplay and the rules, and gives a newcomer strategy guide.
+function renderRules() {
+  const v = vm;
+  const card = (title, note, body) =>
+    `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">${title}</span><span class="note">${note}</span></div>${body}</div>`;
+  const term = (t, d) => `<div style="margin:7px 0"><b style="color:#383a42">${t}</b> — <span class="muted">${d}</span></div>`;
+  const f1 = x => (Math.round(x * 100) / 100).toString();
+
+  // Static identity blurbs (index order: GPU, TPU, Trainium, Maia, MTIA).
+  const makers = ["NVIDIA", "Google", "AWS", "Microsoft", "Meta"];
+  const identity = [
+    "Flagship general-purpose accelerator. Highest output per unit, but the most power-, cooling-, land- and capital-hungry.",
+    "Balanced 1-CU workhorse — moderate draw on every input.",
+    "The lean efficiency play: cheapest to buy and the lightest power/cooling/land footprint, at 1 CU/unit.",
+    "Balanced-efficient 1-CU type — a touch leaner than TPU.",
+    "High-output flagship (2 CU/unit) like the GPU, but slightly leaner on power and land.",
+  ];
+  const chipRows = (v.accelerators || []).map((a, i) => `<tr>
+      <td style="white-space:nowrap"><span style="color:${ACCEL_COLORS[i]};font-weight:600">${esc(a.name)}</span> <span class="muted">${makers[i] || ""}</span></td>
+      <td><b>${a.cuPerUnit}</b> CU</td>
+      <td>${money(a.costUnit)}</td>
+      <td>${f1(a.powerPerUnit)} PU</td>
+      <td>${f1(a.coolPerUnit)} KU</td>
+      <td>1 / ${a.staffPerUnit > 0 ? Math.round(1 / a.staffPerUnit) : "∞"}</td>
+      <td>${f1(a.acrePerUnit)} ac</td>
+    </tr>`).join("");
+  const chipNotes = (v.accelerators || []).map((a, i) =>
+    `<div style="margin:6px 0;display:flex;gap:9px;align-items:flex-start">${makerLogo(i)}<span><b style="color:${ACCEL_COLORS[i]}">${esc(a.name)}</b> <span class="muted">— ${identity[i] || ""}</span></span></div>`).join("");
+
+  const regionRows = (v.regions || []).map(r => `<tr>
+      <td>${esc(r.name)}</td><td>${r.power.toFixed(2)}x</td><td>${r.cool.toFixed(2)}x</td>
+      <td>${r.price.toFixed(2)}x</td><td class="${r.risk === "HIGH" ? "bad" : r.risk === "low" || r.risk === "good" ? "good" : ""}">${r.risk}</td>
+    </tr>`).join("");
+
+  let h = `<div class="sec"><span class="h">RULES</span><span class="note">[ how to organize the most compute — read top to bottom ]</span></div>`;
+
+  h += card("THE GOAL", "[ what you're optimizing ]",
+    `<div class="muted" style="line-height:1.7">Your score is <b class="bright">cumulative compute (CU) organized</b> — every unit of compute you actually <i>deliver to customers</i>, summed over the whole run. One block = one game-week. You lose the moment <b>cash goes negative</b>. So: build compute, sell it into demand, and stay solvent while costs climb.</div>`);
+
+  h += card("THE PRODUCTION LOOP — RECIPROCITY", "[ the core rule ]",
+    `<div class="muted" style="line-height:1.7">Chips don't run on their own. Every unit needs four inputs <b>in balance</b>: <span style="color:${INFRA_COLORS[0]}">Power</span>, <span style="color:${INFRA_COLORS[1]}">Cooling</span>, <span style="color:${INFRA_COLORS[2]}">Land</span> and <span style="color:${INFRA_COLORS[3]}">Staff</span>. Output is set by your <b>weakest</b> input — owning 1000 chips but enough power for 600 means you produce as if you had 600. Over-buying one input is wasted money; under-buying any one throttles the whole floor. Capacity also ramps <b>gradually</b> (it takes a few weeks for new hardware to reach full operation, and a starved input bites within a week or two).</div>`);
+
+  h += card("CHIPS", "[ each type trades output against footprint ]",
+    `<table><tr><th>Type</th><th>Output</th><th>Buy</th><th>Power</th><th>Cool</th><th>Staff</th><th>Land</th></tr>${chipRows}</table>
+     <div style="margin-top:10px">${chipNotes}</div>
+     <div class="muted" style="margin-top:8px;font-size:12px">"Staff 1 / N" = one person operates ~N of these units. "Buy" is the one-time price per unit; chips also have a separate market <b>sale price</b> ($/CU) that floats with demand — see Revenue.</div>`);
+
+  h += card("REGIONS", "[ where you place hardware · multipliers vs Virginia baseline ]",
+    `<table><tr><th>Region</th><th>Power cost</th><th>Cooling</th><th>Price</th><th>Risk</th></tr>${regionRows}</table>
+     <div class="muted" style="margin-top:8px;line-height:1.7">You start in Virginia. Splitting across regions <b>unlocks at 500 CU</b> of capacity. Cheaper power/cooling regions cut opex; higher "Price" regions sell compute for more; higher risk means more frequent local disruptions (heatwaves, grid strain, geopolitics). New purchases are placed by your region weights on the Cost tab.</div>`);
+
+  h += card("INFRASTRUCTURE", "[ the shared pools every chip draws on ]",
+    term(`<span style="color:${INFRA_COLORS[0]}">Power (PU)</span> · ${money(v.costPU)}/PU`, "Electricity capacity. The #1 recurring bill — you pay for every PU you own each week, and it climbs over time. Buy roughly what your fleet needs, not far more.") +
+    term(`<span style="color:${INFRA_COLORS[1]}">Cooling (KU)</span> · ${money(v.costKU)}/KU`, "Heat-removal capacity. A one-time buy (no weekly bill), but its price is erratic and hotter/denser regions burn more of it.") +
+    term(`<span style="color:${INFRA_COLORS[2]}">Land (acres)</span> · ${money(v.costAcre)}/acre`, "Floor space. The fastest-rising cost over the years — secure it before it gets pricey.") +
+    term(`<span style="color:${INFRA_COLORS[3]}">Staff (people)</span> · ${money(v.costHire)}/hire`, "People operate the chips. Hire/fire in tens. The hire price is one-time recruiting; the real cost is the weekly salary (see below).") +
+    term(`<span style="color:${INFRA_COLORS[4]}">Network (Gbps)</span> · ${money(v.costGbps)}/Gbps`, "Unlocks late (at high net worth); caps how much compute you can actually serve. Buy enough or it bottlenecks delivery."));
+
+  h += card("THE PEOPLE — AND WHY LABOR MATTERS", "[ answering: what's the human's role? ]",
+    `<div class="muted" style="line-height:1.7">People are the team that runs the floor. A data center is <b>not</b> labor-intensive — a small crew operates thousands of chips (see "Staff 1 / N" above) — but they're <b>well paid</b>: a salary of <b class="bright">~$100k/year</b> (charged prorated each week) that <b>rises ~15%/year</b>. So labor is a large <b>fixed</b> cost from day one: your starting crew costs the same whether you run 5 chips or 5,000. That's the early-game pressure — you must deploy enough compute to cover the payroll. As you scale, power overtakes labor as the biggest bill. (Note: the "hire" price is one-time recruiting, separate from the recurring salary.)</div>`);
+
+  h += card("DEMAND & WHY DIVERSIFYING HELPS", "[ the market rotates ]",
+    `<div class="muted" style="line-height:1.7">Customers want a <b>changing mix</b> of chip types. Each quarter a different type is in favor (a full rotation takes about a year). You can only sell up to each type's <b>share of demand</b> — make 1000 CU of a type customers only want 300 of, and 700 sits idle while still costing power and staff. Matching your fleet to the rotating mix maximizes delivered CU (your score). <b>Diversifying</b> across types hedges the rotation: when one chip falls out of favor, another is rising, so your delivery stays steady. Prices follow supply vs demand — flood a type and its price craters; hold a scarce in-demand type and it spikes.</div>`);
+
+  h += card("DIFFICULTY OVER TIME", "[ why set-and-forget fails ]",
+    `<div class="muted" style="line-height:1.7">The world gets harder. Input prices and salaries climb every year and <b>step up every 5 years</b>; cooling prices swing erratically; the favored chip keeps rotating. A fleet that's profitable today bleeds out in a few years if you never touch it. Keep re-architecting: re-balance inputs, rotate your chip mix, and expand into cheaper regions.</div>`);
+
+  h += card("STRATEGY — IF YOU'VE NEVER PLAYED THIS KIND OF GAME", "[ a starting playbook ]",
+    `<ol class="muted" style="line-height:1.8;margin:0;padding-left:20px">
+      <li><b>Deploy fast.</b> You begin with a tiny fleet and a full payroll, so you're losing money. On the <b>Cost</b> tab, buy chips plus the Power / Cooling / Land to run them — keep the four inputs balanced.</li>
+      <li><b>Watch the Revenue tab.</b> It shows which chip the market wants now and what each earns. Lean toward the in-favor types, but hold a spread.</li>
+      <li><b>Scale until you're cash-positive,</b> then reinvest profit into more balanced capacity. Don't overbuild past what demand can absorb.</li>
+      <li><b>Use Funding</b> (Cost tab) to bridge growth if cash is tight — borrow, build, repay from profits.</li>
+      <li><b>Re-architect each year.</b> As costs rise and the favored chip rotates, rebalance and expand to cheaper regions (unlocked at 500 CU). Survive the 5-year difficulty steps.</li>
+    </ol>`);
+
+  return h;
 }
 
 function renderOverlay() {

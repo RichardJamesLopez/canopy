@@ -75,9 +75,21 @@ func ensureSupport(s *t.State, p t.Policy) {
 // types, keeping shared infra ahead of the fleet. Deterministic in state.
 func growBalanced(s *t.State, p t.Policy) {
 	ensureSupport(s, p)
-	buffer := m.FromInt(100_000)
-	headroom := m.FromInt(300_000) // enough for a bundle + its infra
+	buffer := m.FromInt(1_000_000)  // keep a solvency reserve (opex runs ahead of capex)
+	headroom := m.FromInt(500_000)
 	for s.Capital-buffer > headroom {
+		// Don't over-build past what the market can absorb: selling is capped by
+		// demand, but power+staff are paid on every unit owned. Stop once installed
+		// capacity covers current demand.
+		var capCU int64
+		for k := 0; k < t.NACCEL; k++ {
+			for r := 0; r < t.NREGION; r++ {
+				capCU += s.Servers[k][r] * Accel[k].CUPerUnit
+			}
+		}
+		if capCU >= s.MarketDemandCU {
+			break
+		}
 		progressed := false
 		for k := 0; k < t.NACCEL; k++ {
 			if Buy(s, p, k, 10) == nil {
@@ -141,7 +153,7 @@ func TestDeterminismHash(t_ *testing.T) {
 // goldenHash pins the canonical StateHash of a fixed trajectory. If this
 // changes, either the rules or the codec changed — bump the relevant version
 // deliberately and update this value. It must be stable across OS/arch.
-const goldenHash = "d713f1362454381c3f34ad22bad5e3936e0de0c7b61865a9581b8849b9626c8d"
+const goldenHash = "7d5b560a6a2b33d3d793c69af2990a49466209a7ef205ae8bb1824444cac7b18"
 
 func TestGoldenTrajectory(t_ *testing.T) {
 	final, _ := runSeason(seasonSeed(0xA5), DefaultPolicy(), 240, 3)
@@ -215,7 +227,7 @@ func TestGameOver(t_ *testing.T) {
 	seed := seasonSeed(0xDE)
 	s := NewSeason(seed, 0)
 	p := DefaultPolicy()
-	_ = Buy(&s, p, t.AccGPU, 155) // big capex (~$992k of $1M), but no power/cooling → zero production
+	_ = Buy(&s, p, t.AccGPU, 600) // big capex (~$3.84M of $4M), but no power/cooling → zero production
 	var endHeight uint64
 	for h := uint64(0); h < 40; h++ {
 		s, _ = Step(s, p, t.StepContext{Height: h, Seed: m.BlockSeed(seed, h, 1), RulesVersion: RulesVersion})

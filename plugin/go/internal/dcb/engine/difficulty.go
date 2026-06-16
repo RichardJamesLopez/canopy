@@ -20,7 +20,7 @@ const DifficultyTierYears = 5
 var (
 	// Per-year steady trajectories: fraction of base added per elapsed year.
 	LandInflPerYear   = m.Pct(8) // land climbs the fastest
-	LaborInflPerYear  = m.Pct(7) // wages + hiring climb
+	LaborInflPerYear  = m.Pct(15) // wages + hiring climb fastest (skilled labor scarcity)
 	UtilInflPerYear   = m.Pct(4) // power + maintenance climb mildly
 	ServerInflPerYear = m.Pct(2) // chips drift up slowly
 

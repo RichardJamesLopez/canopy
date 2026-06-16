@@ -12,7 +12,7 @@ import (
 // capital bonus); everything else resets identically for all players.
 func NewSeason(seed [32]byte, prestigeLevel int64) t.State {
 	lvl := m.ClampInt(prestigeLevel, 0, PrestigeMaxLevel)
-	startCap := m.Mul(m.FromInt(1_000_000), m.ONE+m.Pct(PrestigePerLevelPct*lvl))
+	startCap := m.Mul(m.FromInt(4_000_000), m.ONE+m.Pct(PrestigePerLevelPct*lvl))
 
 	s := t.State{
 		Height:           0,
