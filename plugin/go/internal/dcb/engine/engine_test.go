@@ -141,7 +141,7 @@ func TestDeterminismHash(t_ *testing.T) {
 // goldenHash pins the canonical StateHash of a fixed trajectory. If this
 // changes, either the rules or the codec changed — bump the relevant version
 // deliberately and update this value. It must be stable across OS/arch.
-const goldenHash = "347b5c827901efb7f07139e0a993eef659067f41b966fd1607425a8861b1feea"
+const goldenHash = "d713f1362454381c3f34ad22bad5e3936e0de0c7b61865a9581b8849b9626c8d"
 
 func TestGoldenTrajectory(t_ *testing.T) {
 	final, _ := runSeason(seasonSeed(0xA5), DefaultPolicy(), 240, 3)

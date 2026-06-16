@@ -488,7 +488,7 @@ function renderCost() {
 
   // ---- Accelerators card (top-left) ----
   const accelTip = "Chips produce compute (CU). More chips → more compute → more revenue — as long as you can power, cool & staff them and the market wants that type. Types differ in output and power/cooling/land draw, and prices rise over time. See earnings per type on the Revenue tab.";
-  h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">ACCELERATORS</span><span class="info" title="${accelTip}">?</span><span class="note">[ each type: own price + footprint ]</span></div>`;
+  h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">CHIPS</span><span class="info" title="${accelTip}">?</span><span class="note">[ each type: own price + footprint ]</span></div>`;
   h += `<div style="${ACCEL_GRID}padding:8px 0 6px;font-size:10px;letter-spacing:.1em;color:#b6b7bd">
     <span>TYPE</span><span>OWNED</span><span style="text-align:right">PRICE</span></div>`;
   v.accelerators.forEach((a, i) => {
@@ -509,7 +509,7 @@ function renderCost() {
   h += `</div>`; // end accelerators card
 
   // ---- Shared infrastructure card (top-right) ----
-  h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">SHARED INFRASTRUCTURE</span><span class="note">[ all servers draw on these ]</span></div>`;
+  h += `<div class="config-card"><div class="card-head"><span class="h" style="font-size:12px">INFRASTRUCTURE</span><span class="note">[ all servers draw on these ]</span></div>`;
   const pInc = tier(v.powerPU), cInc = tier(v.coolingKU);
   const infraRows = [
     ["Power",   `${comma(v.powerPU)} PU`,     money(v.costPU)+"/PU",       INFRA_COLORS[0], `act.infra(0,${pInc})`, pInc, null],
@@ -589,7 +589,7 @@ function regionTable(spaced) {
       <td class="${riskCls}" style="${r.risk === "med" ? "color:var(--c-power)" : ""}">${r.risk}</td>
       <td class="muted">${r.servers > 0 ? comma(r.servers) : ""}</td></tr>`;
   }).join("");
-  return `<div class="sec ${spaced ? "spaced" : ""}"><span class="h">REGION ALLOCATION</span><span class="note">[ where new units are placed · shares ]</span></div>${lock}
+  return `<div class="card-head"><span class="h" style="font-size:12px">REGIONS</span><span class="note">[ where new units are placed · shares ]</span></div>${lock}
     <table><tr><th>Region</th><th>Weight</th><th>Power</th><th>Cool</th><th>Price</th><th>Risk</th><th>Servers</th></tr>${rows}</table>`;
 }
 

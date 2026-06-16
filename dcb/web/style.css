@@ -124,7 +124,7 @@ html, body {
 
 /* Cost tab: four config cards in a 2×2 quadrant that fits one laptop screen.
    accel (TL) · shared infra (TR) · funding (BL) · region (BR). */
-.cost-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+.cost-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:stretch; }
 .cost-grid .config-card { margin-bottom:0; padding:13px 15px; }
 .cost-grid .card-head { margin-bottom:8px; }
 .cost-grid table { font-size:13px; }

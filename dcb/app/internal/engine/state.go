@@ -26,14 +26,13 @@ func NewSeason(seed [32]byte, prestigeLevel int64) t.State {
 	}
 	s.LandAcres[t.RegVirginia] = StarterAcre
 
-	// Starter fleet: 5 of each accelerator type in the home region, with enough
-	// shared infra to operate them. This gives the player positive cashflow from
-	// month 1 so they immediately see the reward loop before adding more capacity.
-	for k := 0; k < t.NACCEL; k++ {
-		s.Servers[k][t.RegVirginia] = 5
-	}
-	s.PowerPU[t.RegVirginia]   = 35 // covers ~28 PU peak draw with headroom
-	s.CoolingKU[t.RegVirginia] = 35 // covers ~28 KU peak burden with headroom
+	// Starter fleet: just 5 GPUs in the home region, with staff/infra overhead
+	// that exceeds what so small a fleet can earn. The player therefore starts
+	// with NEGATIVE weekly net income and must scale up (and balance inputs) to
+	// turn the operation cash-positive.
+	s.Servers[t.AccGPU][t.RegVirginia] = 5
+	s.PowerPU[t.RegVirginia]   = 35 // headroom to grow into without buying more day 1
+	s.CoolingKU[t.RegVirginia] = 35
 
 	// Seed per-type prices and demand mix so the dashboard is meaningful before
 	// the first Step (Step recomputes them on the quarter boundary at height 0).
