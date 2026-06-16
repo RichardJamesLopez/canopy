@@ -70,9 +70,12 @@ function loop(now) {
     }
     if (advanced && vm.gameOver && !recorded) { recordScore(); render(); return; }
   }
-  // Status bar always; full repaint of the active read-only tab; interactive
-  // tabs only get their cash strip patched.
-  document.getElementById("statusbar").innerHTML = renderStatus();
+  // Refresh only the volatile clock each frame so the header tab buttons stay
+  // stable and remain clickable; full repaint of the active read-only tab;
+  // interactive tabs only get their cash strip patched.
+  const clk = document.getElementById("clock");
+  if (clk) clk.innerHTML = clockInner();
+  else document.getElementById("statusbar").innerHTML = renderStatus();
   const fn = LIVE_TABS[tab];
   if (fn && !(vm.gameOver && tab !== 3)) {
     const strip = (tab !== 0 && !vm.gameOver) ? `<div id="cashstrip">${headerBar()}</div>` : "";
@@ -362,8 +365,15 @@ function renderStatus() {
   // Tabs live in the header whitespace (right-aligned) once the run has started.
   const tabs = (started || vm.gameOver) ? `<span class="tabstrip">${renderTabs()}</span>` : "";
   return logo() +
-    `<span class="stat">Yr <b>${vm.year}</b> · Wk <b>${vm.weekOfYear}</b>${tickBar()}</span>` +
+    `<span class="stat" id="clock">${clockInner()}</span>` +
     pres + tabs;
+}
+
+// clockInner is the volatile part of the header (year/week + tick bar) refreshed
+// every frame. Kept separate so the per-frame refresh doesn't recreate the tab
+// buttons (which would swallow clicks landing across a re-render).
+function clockInner() {
+  return `Yr <b>${vm.year}</b> · Wk <b>${vm.weekOfYear}</b>${tickBar()}`;
 }
 
 function renderTabs() {
