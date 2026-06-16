@@ -48,6 +48,7 @@ type Accel struct {
 	Delivered   int64   `json:"delivered"`
 	Revenue     int64   `json:"revenue"`
 	DemandCU    int64   `json:"demandCU"`
+	ResaleUnit  int64   `json:"resaleUnit"` // current sell-back $/unit (decays over time)
 	// Per-unit footprint (the reciprocity surface) — for the Rules glossary.
 	PowerPerUnit float64 `json:"powerPerUnit"`
 	CoolPerUnit  float64 `json:"coolPerUnit"`
@@ -124,6 +125,7 @@ type VM struct {
 	CostHire int64 `json:"costHire"`
 	CostGbps int64 `json:"costGbps"`
 	StaffWageWk int64 `json:"staffWageWk"` // recurring weekly salary per person (current)
+	PriceCeil   int64 `json:"priceCeil"`   // max a per-type sale price can reach ($/CU)
 
 	RegionsUnlocked  bool `json:"regionsUnlocked"`
 	NetworkUnlocked  bool `json:"networkUnlocked"`
@@ -197,6 +199,7 @@ func Build(s *t.State, last t.BlockReport, policy t.Policy, meta Meta) VM {
 			DemandCU: m.ToInt(m.Mul(m.FromInt(s.MarketDemandCU), s.DemandMix[k])),
 			PowerPerUnit: fpf(engine.Accel[k].PowerPerUnit), CoolPerUnit: fpf(engine.Accel[k].CoolPerUnit),
 			StaffPerUnit: fpf(engine.Accel[k].StaffPerUnit), AcrePerUnit: fpf(engine.Accel[k].AcrePerUnit),
+			ResaleUnit: m.ToInt(engine.ResaleValue(k, s.Height)),
 		}
 		avgPriceNum += m.Mul(s.TypePrice[k], s.DemandMix[k])
 	}
@@ -252,6 +255,7 @@ func Build(s *t.State, last t.BlockReport, policy t.Policy, meta Meta) VM {
 		CostPU: m.ToInt(engine.PricePU(s.Height)), CostKU: m.ToInt(engine.PriceKU(s.Height)), CostAcre: m.ToInt(engine.PriceAcre(s.Height)),
 		CostHire: m.ToInt(engine.HireCostAt(s.Height)), CostGbps: m.ToInt(engine.CostGbps),
 		StaffWageWk: m.ToInt(engine.StaffWageAt(s.Height)),
+		PriceCeil:   m.ToInt(engine.TypePriceCeil),
 		RegionsUnlocked: s.RegionsUnlocked, NetworkUnlocked: s.NetworkUnlocked, LeverageUnlocked: s.LeverageUnlocked,
 		Regions: regions, Events: events, Leaderboard: lb, Policy: FromPolicy(policy),
 		Week: int64(s.Height), Year: int64(s.Height) / int64(engine.BlocksPerYear),

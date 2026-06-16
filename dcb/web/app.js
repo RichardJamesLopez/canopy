@@ -380,7 +380,9 @@ function clockInner() {
 }
 
 function renderTabs() {
-  return ["Dashboard", "Cost", "Revenue", "Leaderboard", "Rules"].map((n, i) =>
+  // Only the three live tabs sit in the header (widened to fill it). Leaderboard
+  // and Rules are reached from the dashboard nav buttons (and keys 4/5).
+  return ["Dashboard", "Cost", "Revenue"].map((n, i) =>
     `<span class="tab ${i === tab ? "active" : ""}" onclick="act.tab(${i})">${i + 1} ${n}</span>`).join("");
 }
 
@@ -468,6 +470,10 @@ function renderDash() {
   </div>
   <div class="row" style="margin-top:6px">
     <span class="muted">Demand ${comma(v.demand)} CU/wk · your supply ${comma(v.capacity)} CU · avg price $${(v.avgPrice || 0).toFixed(0)}/CU · 1 block = 1 week (5s)</span>
+  </div>
+  <div class="dash-nav">
+    <button class="dash-navbtn" onclick="act.tab(3)"><span class="dn-t">Leaderboard</span><span class="dn-s">how you rank vs rivals · all-time scores</span></button>
+    <button class="dash-navbtn" onclick="act.tab(4)"><span class="dn-t">Rules</span><span class="dn-s">how chips, regions &amp; demand work · strategy</span></button>
   </div>`;
 }
 
@@ -478,21 +484,6 @@ const ACCEL_GRID = "display:grid;grid-template-columns:1fr auto auto;align-items
 
 function accelStepper(call, label) {
   return `<button onclick="${call}" title="${label}" style="width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #dcdce0;border-radius:6px;background:#fff;color:#5c6166;font-size:16px;line-height:1;cursor:pointer;font-family:inherit;flex-shrink:0">${label[0] === "s" ? "−" : "+"}</button>`;
-}
-
-// makerLogo returns a 22×22 maker tile for the i-th accelerator type, ported
-// from the design file (GPU=NVIDIA, TPU=Google, Trainium=AWS, Maia=Microsoft,
-// MTIA=Meta).
-function makerLogo(i) {
-  const tile = (style, inner) => `<span style="width:22px;height:22px;border-radius:5px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;${style}">${inner}</span>`;
-  switch (i) {
-    case 0: return tile("background:#76b900", `<svg viewBox="0 0 24 24" width="15" height="15"><path fill="#fff" d="M7.4 9.1c1.6-1.1 3.8-1.2 5.4-.2-1.2.05-2.4.6-3.1 1.6 .9-.3 1.9-.1 2.6.5-1.3.2-2.4 1-3 2.2-1.2-.2-2.2-1-2.6-2.1-.4-.8-.2-1.8.7-2zM12 5.6c3.6-.2 6.9 2.3 7.6 5.8 .6 3.1-1 6.3-3.9 7.6 1.4-1.4 2.1-3.4 1.8-5.4-.4-2.9-2.8-5.2-5.7-5.5-3-.3-5.9 1.6-6.8 4.5-.3-3.3 2-6.4 5.3-7 .5-.1 1.1-.1 1.7 0z"/></svg>`);
-    case 1: return tile("background:#fff;border:1px solid #ececef", `<span style="position:relative;width:16px;height:16px;border-radius:50%;background:conic-gradient(from -48deg,#ea4335 0deg 95deg,#fbbc05 95deg 175deg,#34a853 175deg 255deg,#4285f4 255deg 360deg);display:inline-flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:50%;background:#fff"></span><span style="position:absolute;right:-1px;top:50%;transform:translateY(-50%);width:6px;height:4px;background:#4285f4"></span></span>`);
-    case 2: return tile("background:#232f3e", `<span style="display:flex;flex-direction:column;align-items:center;line-height:1;gap:1px"><span style="color:#fff;font-weight:700;font-size:8px;letter-spacing:.02em">aws</span><svg viewBox="0 0 20 6" width="16" height="5"><path d="M2 1.5 C 7 5, 13 5, 18 1.8" fill="none" stroke="#ff9900" stroke-width="1.4" stroke-linecap="round"/><path d="M18 1.8 L 15.6 1.4 M18 1.8 L 16.6 3.6" fill="none" stroke="#ff9900" stroke-width="1.4" stroke-linecap="round"/></svg></span>`);
-    case 3: { const sq = c => `<span style="width:7px;height:7px;background:${c}"></span>`; return tile("background:#fff;border:1px solid #ececef", `<span style="display:grid;grid-template-columns:7px 7px;grid-template-rows:7px 7px;gap:1.5px">${sq("#f25022")}${sq("#7fba00")}${sq("#00a4ef")}${sq("#ffb900")}</span>`); }
-    case 4: return tile("background:#fff;border:1px solid #ececef", `<svg viewBox="0 0 24 24" width="17" height="17"><defs><linearGradient id="metaG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0064e1"/><stop offset="100%" stop-color="#0082fb"/></linearGradient></defs><path fill="none" stroke="url(#metaG)" stroke-width="2.6" stroke-linecap="round" d="M5 15 C 5 9, 8.5 8, 12 13 C 15.5 18, 19 17, 19 11 C 19 7.5, 16 7.5, 14 11"/></svg>`);
-  }
-  return tile("background:#eee", "");
 }
 
 function renderCost() {
@@ -510,14 +501,16 @@ function renderCost() {
     h += `<div style="${ACCEL_GRID}padding:6px 0;border-top:1px solid #f0f0f2">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
         <span style="font-size:15px;font-weight:600;color:${ACCEL_COLORS[i]};white-space:nowrap">${esc(a.name)}</span>
-        ${makerLogo(i)}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:14px;color:#5c6166;white-space:nowrap"><b style="color:#383a42;font-weight:700">${comma(a.units)}</b> units</span>
         ${accelStepper(`act.sell(${i},${inc})`, `sell ${inc}`)}
         ${accelStepper(`act.buy(${i},${inc})`, `buy ${inc}`)}
       </div>
-      <div style="text-align:right;font-size:14px;font-weight:600;color:#383a42;font-variant-numeric:tabular-nums;white-space:nowrap">${money(a.costUnit)}<span style="color:#b6b7bd;font-weight:400">/unit</span></div>
+      <div style="text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.3">
+        <div style="font-size:14px;font-weight:600;color:#383a42">${money(a.costUnit)}<span style="color:#b6b7bd;font-weight:400">/unit</span></div>
+        <div style="font-size:11.5px;color:#9b9ca3">resell ${money(a.resaleUnit)}</div>
+      </div>
     </div>`;
   });
   h += `</div>`; // end accelerators card
@@ -613,15 +606,16 @@ function regionTable(spaced) {
 function renderRevenue() {
   const v = vm;
   const totalRev = Math.max(1, v.accelerators.reduce((s, a) => s + a.revenue, 0));
-  const maxRev = Math.max(1, ...v.accelerators.map(a => a.revenue));
+  const ceil = v.priceCeil || 700;
   const accelRows = v.accelerators.map((a, i) => {
-    const barPct = Math.round((a.revenue / maxRev) * 100);
+    // Bar = how lucrative this chip's market is right now: current sale price as
+    // a fraction of the absolute price ceiling (independent of what you hold).
+    const barPct = Math.min(100, Math.round((a.price / ceil) * 100));
     const sharePct = Math.round((a.revenue / totalRev) * 100);
     const fill = a.demandCU > 0 ? Math.min(100, Math.round(a.delivered / a.demandCU * 100)) : 0;
     return `<div style="margin:11px 0">
       <div style="display:flex;align-items:center;gap:9px;margin-bottom:5px">
         <span style="font-size:14px;font-weight:600;color:${ACCEL_COLORS[i]}">${esc(a.name)}</span>
-        ${makerLogo(i)}
         <span class="muted" style="font-size:12px">${comma(a.delivered)}/${comma(a.demandCU)} CU sold @ $${a.price.toFixed(0)}/CU · meeting ${fill}% of demand</span>
         <span class="bright" style="margin-left:auto;font-weight:700">${signed(a.revenue)}/wk <span class="muted" style="font-weight:400">${sharePct}%</span></span>
       </div>
@@ -644,7 +638,8 @@ function renderRevenue() {
 
   return `<div class="sec"><span class="h">REVENUE</span><span class="note">[ delivered compute × market price · prices reprice quarterly ]</span></div>
     <div class="grid">
-      <div class="panel"><h2>Revenue by accelerator / week</h2>${accelRows}</div>
+      <div class="panel"><h2>Revenue by accelerator / week</h2>
+        <div class="muted" style="font-size:11.5px;margin-bottom:4px">bar = current market price vs the $${comma(ceil)}/CU ceiling — how lucrative each chip is to make right now</div>${accelRows}</div>
       <div class="panel"><h2>Income statement / week</h2>${incomeStmt}
         <div class="muted" style="margin-top:10px;font-size:12px">Operable ${Math.round((v.util || 0) * 100)}% · bottleneck ${esc(v.bottleneck || "—")}. Raise revenue by buying the chips the market wants (Cost tab) and keeping power/cooling/staff ahead of your fleet.</div>
       </div>
@@ -705,7 +700,7 @@ function renderRules() {
       <td>${f1(a.acrePerUnit)} ac</td>
     </tr>`).join("");
   const chipNotes = (v.accelerators || []).map((a, i) =>
-    `<div style="margin:6px 0;display:flex;gap:9px;align-items:flex-start">${makerLogo(i)}<span><b style="color:${ACCEL_COLORS[i]}">${esc(a.name)}</b> <span class="muted">— ${identity[i] || ""}</span></span></div>`).join("");
+    `<div style="margin:6px 0"><b style="color:${ACCEL_COLORS[i]}">${esc(a.name)}</b> <span class="muted">(${makers[i] || ""}) — ${identity[i] || ""}</span></div>`).join("");
 
   const regionRows = (v.regions || []).map(r => `<tr>
       <td>${esc(r.name)}</td><td>${r.power.toFixed(2)}x</td><td>${r.cool.toFixed(2)}x</td>

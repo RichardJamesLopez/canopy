@@ -115,6 +115,15 @@ var (
 	}
 	TypePriceFloor = dcbmath.FromInt(25)
 	TypePriceCeil  = dcbmath.FromInt(700)
+)
+
+// Chip resale: selling refunds a fraction of the BASE buy price that decays over
+// game-years (hardware depreciates as newer gen arrives). The buy/resale spread
+// makes churning the fleet up and down genuinely costly. See ResaleValue.
+var (
+	ResaleStartPct   = dcbmath.Pct(65)     // resale fraction of base buy price at year 0
+	ResaleFloorPct   = dcbmath.Pct(20)     // floor it decays to
+	ResaleDropPerYear = dcbmath.FP(45_000) // -0.045 of base per elapsed year (~65%→20% over 10y)
 	// S/D ratio band applied to the base price each quarter.
 	SDRatioMin = dcbmath.Pct(25)
 	SDRatioMax = dcbmath.FromInt(4)

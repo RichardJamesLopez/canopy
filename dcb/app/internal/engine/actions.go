@@ -110,9 +110,9 @@ func Sell(s *t.State, kind int, qty int64) error {
 		}
 		s.Servers[kind][r] -= n
 	}
-	// Refund at the BASE buy price (not the escalated price) so rising prices
-	// can't be arbitraged by buying low and selling back high.
-	refund := m.Mul(m.Mul(m.FromInt(qty), CostServer[kind]), SellRefundPct)
+	// Refund at the current (decaying) resale value — a fraction of base buy
+	// price that falls over time, so churning the fleet up/down is costly.
+	refund := m.Mul(m.FromInt(qty), ResaleValue(kind, s.Height))
 	s.Capital += refund
 	return nil
 }

@@ -77,6 +77,20 @@ func PriceKU(h uint64) m.FP {
 	return m.Mul(base, m.ONE+m.Mul(amp, coolNoise(h)))
 }
 
+// resaleFrac is the fraction of a chip's base buy price recovered on sale at
+// height h: starts at ResaleStartPct and depreciates ResaleDropPerYear each year
+// down to ResaleFloorPct. Pure function of height.
+func resaleFrac(h uint64) m.FP {
+	return m.ClampFP(ResaleStartPct-m.Mul(ResaleDropPerYear, m.FromInt(years(h))), ResaleFloorPct, ResaleStartPct)
+}
+
+// ResaleValue is the current per-unit sell-back price for an accelerator type:
+// resaleFrac of the BASE buy price (CostServer), so it only ever falls — no
+// buy-low/sell-high arbitrage even as buy prices inflate.
+func ResaleValue(kind int, h uint64) m.FP {
+	return m.Mul(CostServer[kind], resaleFrac(h))
+}
+
 // coolNoise is deterministic pseudo-noise in [-ONE, ONE], keyed on the quarter
 // index only (pure; identical every run and on replay).
 func coolNoise(h uint64) m.FP {
