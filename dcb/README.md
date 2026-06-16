@@ -20,7 +20,9 @@ rebuildable). Re-vendor after engine changes and rebuild the wasm.
   Builds on Go ≥1.25 (imports `canopy/lib/crypto` for BLS signing).
 - `faucet/` — Go module (`dcbfaucet`): funds new player wallets so the
   non-custodial browser client can play. Pinned to Go 1.25 (`toolchain` in
-  go.mod) because it imports the full `canopy/lib`.
+  go.mod) because it imports the full `canopy/lib`. The native token is used for
+  tx fees only — the game economy is internal plugin state, not the chain token
+  (see the "Token model" section in the parent's `CANOPY.md`).
   ```sh
   cd faucet && go run . -node http://<node>:50002 -key <house-bls-hex> \
     -chain <nested-chain-id> -grant 10000000 -listen :8088
