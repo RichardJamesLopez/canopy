@@ -16,6 +16,7 @@ import (
 	dfsm "github.com/canopy-network/go-plugin/internal/dcb/fsm"
 	t "github.com/canopy-network/go-plugin/internal/dcb/dcbtypes"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -173,18 +174,26 @@ func (c *Contract) recordDcbSeed(height uint64, proposer []byte) {
 func dcbErr(err error) *PluginError { return NewError(100, "dcb", err.Error()) }
 
 // dcbStateTypeURL labels the player-state event payload (declared in
-// ContractConfig.EventTypeUrls). The Any.Value is engine.EncodeState bytes.
-const dcbStateTypeURL = "dcb/state"
+// ContractConfig.EventTypeUrls). It must be a real proto type URL so the node's
+// plugin-schema registry can resolve it; the Any.Value is a marshaled
+// DcbStateEvent whose State field carries the engine.EncodeState bytes.
+const dcbStateTypeURL = "type.googleapis.com/types.DcbStateEvent"
 
-// stateEvent builds a player-state event: the encoded State under dcbStateTypeURL,
-// tagged with the player address so clients read it via events-by-address.
+// stateEvent builds a player-state event: the encoded State wrapped in a
+// DcbStateEvent under dcbStateTypeURL, tagged with the player address so clients
+// read it via events-by-address.
 func stateEvent(addr []byte, st *t.State) *Event {
+	payload, _ := proto.Marshal(&DcbStateEvent{
+		State:   engine.EncodeState(st),
+		Height:  st.Height,
+		Address: addr,
+	})
 	return &Event{
 		EventType: "dcb_state",
 		Address:   addr,
 		Msg: &Event_Custom{Custom: &EventCustom{Msg: &anypb.Any{
 			TypeUrl: dcbStateTypeURL,
-			Value:   engine.EncodeState(st),
+			Value:   payload,
 		}}},
 	}
 }

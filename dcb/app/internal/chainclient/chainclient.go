@@ -142,8 +142,13 @@ func VerifySelf(x *tx.Transaction) (bool, error) {
 	return pub.VerifyBytes(sb, x.Signature.Signature), nil
 }
 
-// DecodeStateEvent decodes a dcb/state event payload (the Any.Value bytes the
-// plugin emits = engine.EncodeState) back into a State.
+// DecodeStateEvent decodes a dcb/state event payload back into a State. The
+// plugin emits the Any.Value as a marshaled DcbStateEvent envelope whose State
+// field holds the raw engine.EncodeState bytes.
 func DecodeStateEvent(value []byte) (t.State, error) {
-	return engine.DecodeState(value)
+	var ev tx.DcbStateEvent
+	if err := proto.Unmarshal(value, &ev); err != nil {
+		return t.State{}, err
+	}
+	return engine.DecodeState(ev.State)
 }

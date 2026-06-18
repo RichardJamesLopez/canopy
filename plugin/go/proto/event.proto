@@ -33,3 +33,12 @@ message EventCustom {
   // msg: custom payload.
   google.protobuf.Any msg = 1;
 }
+
+// DcbStateEvent is the DCB player-state event payload. state holds the raw
+// engine.EncodeState bytes; declared in ContractConfig.EventTypeUrls as
+// type.googleapis.com/types.DcbStateEvent so the plugin schema check resolves it.
+message DcbStateEvent {
+  bytes state = 1;
+  uint64 height = 2;
+  bytes address = 3;
+}

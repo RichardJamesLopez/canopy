@@ -624,6 +624,69 @@ func (x *MessageDcbBuyInfra) GetQty() int64 {
 	return 0
 }
 
+// DcbStateEvent is the player-state event payload emitted by the plugin (must
+// match canopy/plugin/proto/event.proto). The browser client unmarshals this,
+// then engine.DecodeState(state) for the raw deterministic state bytes.
+type DcbStateEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	State         []byte                 `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	Height        uint64                 `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
+	Address       []byte                 `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DcbStateEvent) Reset() {
+	*x = DcbStateEvent{}
+	mi := &file_tx_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DcbStateEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DcbStateEvent) ProtoMessage() {}
+
+func (x *DcbStateEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_tx_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DcbStateEvent.ProtoReflect.Descriptor instead.
+func (*DcbStateEvent) Descriptor() ([]byte, []int) {
+	return file_tx_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DcbStateEvent) GetState() []byte {
+	if x != nil {
+		return x.State
+	}
+	return nil
+}
+
+func (x *DcbStateEvent) GetHeight() uint64 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *DcbStateEvent) GetAddress() []byte {
+	if x != nil {
+		return x.Address
+	}
+	return nil
+}
+
 var File_tx_proto protoreflect.FileDescriptor
 
 const file_tx_proto_rawDesc = "" +
@@ -669,7 +732,11 @@ const file_tx_proto_rawDesc = "" +
 	"\x12MessageDcbBuyInfra\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\fR\aaddress\x12\x14\n" +
 	"\x05infra\x18\x02 \x01(\rR\x05infra\x12\x10\n" +
-	"\x03qty\x18\x03 \x01(\x03R\x03qtyB$Z\"dcbapp/internal/canopytxb\x06proto3"
+	"\x03qty\x18\x03 \x01(\x03R\x03qty\"W\n" +
+	"\rDcbStateEvent\x12\x14\n" +
+	"\x05state\x18\x01 \x01(\fR\x05state\x12\x16\n" +
+	"\x06height\x18\x02 \x01(\x04R\x06height\x12\x18\n" +
+	"\aaddress\x18\x03 \x01(\fR\aaddressB$Z\"dcbapp/internal/canopytxb\x06proto3"
 
 var (
 	file_tx_proto_rawDescOnce sync.Once
@@ -683,7 +750,7 @@ func file_tx_proto_rawDescGZIP() []byte {
 	return file_tx_proto_rawDescData
 }
 
-var file_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_tx_proto_goTypes = []any{
 	(*Transaction)(nil),          // 0: types.Transaction
 	(*Signature)(nil),            // 1: types.Signature
@@ -695,10 +762,11 @@ var file_tx_proto_goTypes = []any{
 	(*MessageDcbHire)(nil),       // 7: types.MessageDcbHire
 	(*MessageDcbFire)(nil),       // 8: types.MessageDcbFire
 	(*MessageDcbBuyInfra)(nil),   // 9: types.MessageDcbBuyInfra
-	(*anypb.Any)(nil),            // 10: google.protobuf.Any
+	(*DcbStateEvent)(nil),        // 10: types.DcbStateEvent
+	(*anypb.Any)(nil),            // 11: google.protobuf.Any
 }
 var file_tx_proto_depIdxs = []int32{
-	10, // 0: types.Transaction.msg:type_name -> google.protobuf.Any
+	11, // 0: types.Transaction.msg:type_name -> google.protobuf.Any
 	1,  // 1: types.Transaction.signature:type_name -> types.Signature
 	2,  // [2:2] is the sub-list for method output_type
 	2,  // [2:2] is the sub-list for method input_type
@@ -718,7 +786,7 @@ func file_tx_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tx_proto_rawDesc), len(file_tx_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

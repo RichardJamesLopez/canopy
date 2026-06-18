@@ -1,0 +1,46 @@
+syntax = "proto3";
+// package MUST be `types` so generated proto full names (types.Transaction,
+// types.MessageDcbBuy, ...) and Any type-URLs match the Canopy node + DCB plugin
+// byte-for-byte. This is a vendored, minimal copy of Canopy lib's Transaction +
+// the DCB plugin's messages — enough for an external client to build, sign, and
+// submit dcb_* transactions without importing canopy/lib (which doesn't compile
+// to wasm). See CANOPY.md.
+package types;
+
+option go_package = "dcbapp/internal/canopytx";
+
+import "google/protobuf/any.proto";
+
+// Transaction mirrors canopy/lib Transaction (field numbers are normative for
+// sign-bytes; sign-bytes = deterministic proto-marshal with signature == nil).
+message Transaction {
+  string message_type = 1;
+  google.protobuf.Any msg = 2;
+  Signature signature = 3;
+  uint64 created_height = 4;
+  uint64 time = 5;
+  uint64 fee = 6;
+  string memo = 7;
+  uint64 network_id = 8;
+  uint64 chain_id = 9;
+}
+
+message Signature {
+  bytes public_key = 1;
+  bytes signature = 2;
+}
+
+// ---- DCB plugin messages (must match canopy/plugin/proto/tx.proto) ----
+message MessageDcbStartRun { bytes address = 1; string name = 2; }
+message MessageDcbSetPolicy { bytes address = 1; bytes policy = 2; }
+message MessageDcbCheckpoint { bytes address = 1; }
+message MessageDcbBuy { bytes address = 1; uint32 kind = 2; int64 qty = 3; }
+message MessageDcbSell { bytes address = 1; uint32 kind = 2; int64 qty = 3; }
+message MessageDcbHire { bytes address = 1; int64 n = 2; }
+message MessageDcbFire { bytes address = 1; int64 n = 2; }
+message MessageDcbBuyInfra { bytes address = 1; uint32 infra = 2; int64 qty = 3; }
+
+// DcbStateEvent is the player-state event payload emitted by the plugin (must
+// match canopy/plugin/proto/event.proto). The browser client unmarshals this,
+// then engine.DecodeState(state) for the raw deterministic state bytes.
+message DcbStateEvent { bytes state = 1; uint64 height = 2; bytes address = 3; }

@@ -31,7 +31,7 @@ var ContractConfig = &PluginConfig{
 		"type.googleapis.com/types.MessageDcbFire",
 		"type.googleapis.com/types.MessageDcbBuyInfra",
 	},
-	EventTypeUrls: []string{"dcb/state"},
+	EventTypeUrls: []string{"type.googleapis.com/types.DcbStateEvent"},
 }
 
 // init sets FileDescriptorProtos after ensuring .pb.go files are initialized
