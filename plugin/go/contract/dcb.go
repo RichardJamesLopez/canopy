@@ -28,10 +28,9 @@ import (
 var dcbSeasonSeedDefault = sha256.Sum256([]byte("dcb/season/1"))
 
 // dcbSeasonSeedKey persists the genesis-derived season seed in plugin state so it
-// survives plugin restarts and is identical across validators.
-var dcbSeasonSeedKey = []byte("dcb/season-seed")
-
-var dcbSeedPrefix = []byte("dcb/seed")
+// survives plugin restarts and is identical across validators. Keys are length-prefix
+// encoded (t.LenPrefix) so Canopy core can decode them on commit — see dcbtypes.LenPrefix.
+var dcbSeasonSeedKey = t.LenPrefix(t.SeasonSeedPrefix)
 
 // initSeason derives the season world seed from the genesis JSON (deterministic
 // and identical for every validator) and persists it. Called from Genesis().
@@ -59,10 +58,9 @@ func (c *Contract) seasonSeed() [32]byte {
 }
 
 func dcbSeedKey(height uint64) []byte {
-	k := make([]byte, len(dcbSeedPrefix)+8)
-	copy(k, dcbSeedPrefix)
-	binary.BigEndian.PutUint64(k[len(dcbSeedPrefix):], height)
-	return k
+	var h [8]byte
+	binary.BigEndian.PutUint64(h[:], height)
+	return t.LenPrefix(t.SeedPrefix, h[:])
 }
 
 // playerID derives a stable uint64 id from a 20-byte account address.

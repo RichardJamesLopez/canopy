@@ -9,6 +9,35 @@ import "github.com/canopy-network/go-plugin/internal/dcb/dcbmath"
 // FP is re-exported for convenience.
 type FP = dcbmath.FP
 
+// LenPrefix encodes segments in Canopy core's length-prefixed key convention,
+// byte-identical to lib.EncodeLengthPrefixed / lib.JoinLenPrefix (canopy lib/util.go):
+// each segment is preceded by a single length byte. EVERY key written through the
+// plugin StateWrite MUST use this form, or core's makeVersionedKey →
+// DecodeLengthPrefixed (store/versioned_store.go) panics "corrupt or incomplete key"
+// on commit when it reads a raw byte as a bogus segment length.
+//
+// CONSTRAINT: each segment must be <= 255 bytes (the length is a single byte). This
+// is for KEYS ONLY — values are stored opaquely by core and must NOT be length-prefixed
+// (engine.EncodeState payloads exceed 255 bytes and would overflow the length byte).
+func LenPrefix(segments ...[]byte) []byte {
+	var out []byte
+	for _, s := range segments {
+		out = append(out, byte(len(s)))
+		out = append(out, s...)
+	}
+	return out
+}
+
+// Single-byte DCB store-key prefixes. Chosen OUTSIDE core's reserved range 1-15
+// (canopy fsm/state.go reserves single-byte prefixes 1-15 for accounts, pools,
+// validators, etc. and panics if a plugin writes under them).
+var (
+	PlayerPrefix      = []byte{0x10} // per-player record:   LenPrefix(PlayerPrefix, id)
+	LeaderboardPrefix = []byte{0x11} // leaderboard index:   LenPrefix(LeaderboardPrefix, id)
+	SeedPrefix        = []byte{0x12} // per-block seed:       LenPrefix(SeedPrefix, height)
+	SeasonSeedPrefix  = []byte{0x13} // genesis season seed:  LenPrefix(SeasonSeedPrefix)
+)
+
 // NREGION is the number of regions in the Land splinter.
 const NREGION = 6
 

@@ -267,8 +267,8 @@ type LBEntry struct {
 // Reflects the last Checkpoint/SetPolicy of each player (bounded staleness).
 func (f *FSM) Leaderboard() []LBEntry {
 	var out []LBEntry
-	f.store.Iterate(lbPrefix, func(key, val []byte) bool {
-		id := binary.BigEndian.Uint64(key[len(lbPrefix):])
+	f.store.Iterate(t.LenPrefix(lbPrefix), func(key, val []byte) bool {
+		id := idFromLenKey(key)
 		score := int64(binary.BigEndian.Uint64(val[:8]))
 		name := string(val[8:])
 		out = append(out, LBEntry{ID: id, Name: name, Score: score})
@@ -310,19 +310,32 @@ func (f *FSM) indexLeaderboard(id uint64, rec *PlayerRecord) {
 
 // ---- keys ----
 
+// Key prefixes are single bytes outside core's reserved 1-15 range; keys are
+// length-prefix encoded (see dcbtypes.LenPrefix) so Canopy core can decode them
+// on commit. Iterating a prefix still works: LenPrefix(p) is a byte-prefix of
+// every LenPrefix(p, id), and the trailing big-endian id preserves ascending sort.
 var (
-	playerPrefix = []byte("p/")
-	lbPrefix     = []byte("l/")
+	playerPrefix = t.PlayerPrefix
+	lbPrefix     = t.LeaderboardPrefix
 )
 
 func playerKey(id uint64) []byte { return idKey(playerPrefix, id) }
 func lbKey(id uint64) []byte     { return idKey(lbPrefix, id) }
 
 func idKey(prefix []byte, id uint64) []byte {
-	k := make([]byte, len(prefix)+8)
-	copy(k, prefix)
-	binary.BigEndian.PutUint64(k[len(prefix):], id)
-	return k
+	return t.LenPrefix(prefix, formatUint64(id))
+}
+
+func formatUint64(id uint64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, id)
+	return b
+}
+
+// idFromLenKey extracts the id segment from a LenPrefix(prefix, id) key. The id
+// is the last 8 bytes (segment layout: [1][prefix][8][id]).
+func idFromLenKey(key []byte) uint64 {
+	return binary.BigEndian.Uint64(key[len(key)-8:])
 }
 
 // ---- record codec (canonical, round-trippable) ----
