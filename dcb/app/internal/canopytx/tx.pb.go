@@ -736,7 +736,7 @@ const file_tx_proto_rawDesc = "" +
 	"\rDcbStateEvent\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\fR\x05state\x12\x16\n" +
 	"\x06height\x18\x02 \x01(\x04R\x06height\x12\x18\n" +
-	"\aaddress\x18\x03 \x01(\fR\aaddressB$Z\"dcbapp/internal/canopytxb\x06proto3"
+	"\aaddress\x18\x03 \x01(\fR\aaddressB$Z\"github.com/richcl/dcb/pkg/canopytxb\x06proto3"
 
 var (
 	file_tx_proto_rawDescOnce sync.Once

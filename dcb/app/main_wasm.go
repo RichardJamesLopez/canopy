@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"syscall/js"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"dcbapp/internal/chainclient"
@@ -149,7 +148,7 @@ func dcbChainBuildTx(_ js.Value, a []js.Value) any {
 	if err != nil {
 		return errJSON(err)
 	}
-	jb, err := protojson.Marshal(x)
+	jb, err := chainclient.MarshalCanopyJSON(x)
 	if err != nil {
 		return errJSON(err)
 	}

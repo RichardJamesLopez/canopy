@@ -8,9 +8,11 @@ package chainclient
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"github.com/canopy-network/canopy/lib/crypto"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -140,6 +142,55 @@ func VerifySelf(x *tx.Transaction) (bool, error) {
 		return false, err
 	}
 	return pub.VerifyBytes(sb, x.Signature.Signature), nil
+}
+
+// MarshalCanopyJSON encodes a signed transaction in the exact JSON shape the
+// node's /v1/tx decoder accepts (mirrors canopy lib.Transaction.MarshalJSON):
+// top-level key "type", uint64 envelope fields as JSON numbers, "msg" as
+// protojson (base64 inner bytes), and "signature" as HEX. protojson alone
+// renders the signature bytes as base64, which the node hex-decodes and
+// rejects ("stringToBytes() ... encoding/hex: invalid byte"). The signature is
+// over the deterministic protobuf binary, so the transport encoding here does
+// not change sign-bytes. canopy/lib can't be imported in wasm, so the format
+// is replicated.
+func MarshalCanopyJSON(x *tx.Transaction) ([]byte, error) {
+	inner, err := x.Msg.UnmarshalNew() // concrete MessageDcb* (registered at compile time)
+	if err != nil {
+		return nil, err
+	}
+	msgJSON, err := protojson.Marshal(inner)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{
+		"type": x.MessageType,
+		"msg":  json.RawMessage(msgJSON),
+	}
+	if x.Signature != nil {
+		out["signature"] = map[string]string{
+			"publicKey": hex.EncodeToString(x.Signature.PublicKey),
+			"signature": hex.EncodeToString(x.Signature.Signature),
+		}
+	}
+	if x.Time != 0 {
+		out["time"] = x.Time
+	}
+	if x.CreatedHeight != 0 {
+		out["createdHeight"] = x.CreatedHeight
+	}
+	if x.Fee != 0 {
+		out["fee"] = x.Fee
+	}
+	if x.Memo != "" {
+		out["memo"] = x.Memo
+	}
+	if x.NetworkId != 0 {
+		out["networkID"] = x.NetworkId
+	}
+	if x.ChainId != 0 {
+		out["chainID"] = x.ChainId
+	}
+	return json.Marshal(out)
 }
 
 // DecodeStateEvent decodes a dcb/state event payload back into a State. The

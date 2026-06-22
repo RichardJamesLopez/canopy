@@ -27,10 +27,11 @@ let lastT = 0;
 (async function boot() {
   const go = new Go();
   let result;
+  const WASM = "dcb.wasm?v=23"; // bump with app.js to bust the CDN/browser cache
   try {
-    result = await WebAssembly.instantiateStreaming(fetch("dcb.wasm"), go.importObject);
+    result = await WebAssembly.instantiateStreaming(fetch(WASM), go.importObject);
   } catch (e) {
-    const buf = await (await fetch("dcb.wasm")).arrayBuffer();
+    const buf = await (await fetch(WASM)).arrayBuffer();
     result = await WebAssembly.instantiate(buf, go.importObject);
   }
   go.run(result.instance);
@@ -120,13 +121,25 @@ const live = {
     return true;
   },
 
+  // rpc POSTs with retry+backoff on transient gateway failures. The val-a
+  // gateway intermittently 502s under the 3s poll; a 5xx or network error is
+  // retried (up to 3 tries, 250ms→500ms→1s) so a blip doesn't blank the UI. A
+  // 4xx is a real rejection (e.g. tx invalid) and is returned immediately.
   async rpc(path, body) {
-    const r = await fetch(this.node + path, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify(body || {}),
-    });
-    const txt = await r.text();
-    try { return JSON.parse(txt); } catch { return txt; }
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await sleep(250 * (1 << (attempt - 1)));
+      try {
+        const r = await fetch(this.node + path, {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify(body || {}),
+        });
+        if (r.status >= 500) { lastErr = new Error("rpc " + r.status); continue; }
+        const txt = await r.text();
+        try { return JSON.parse(txt); } catch { return txt; }
+      } catch (e) { lastErr = e; } // network/CORS error → retry
+    }
+    throw lastErr || new Error("rpc failed");
   },
 
   async height() {
