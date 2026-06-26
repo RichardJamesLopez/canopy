@@ -300,7 +300,7 @@ function logo() {
     <div class="rack"><div class="u">${led(ACCEL_COLORS[0])}<span class="lead"></span></div>
     <div class="u">${led(ACCEL_COLORS[1])}<span class="lead"></span></div>
     <div class="u">${led(ACCEL_COLORS[4])}<span class="lead"></span></div></div>
-    <div class="wordmark"><div class="name">DCB</div><div class="sub">DATA·CENTER·BUILDER · build 0623a</div></div>
+    <div class="wordmark"><div class="name">DCB</div><div class="sub">DATA·CENTER·BUILDER · build 0625e</div></div>
   </div>`;
 }
 
