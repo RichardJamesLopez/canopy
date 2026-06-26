@@ -4,7 +4,7 @@ const Footer: React.FC = () => {
     return (
         <footer className="mt-6 border-t border-white/10 bg-transparent">
             <div className="mx-auto px-1 py-6 sm:px-2">
-                <div className="mb-2 text-center text-xs text-gray-500">build 0625b</div>
+                <div className="mb-2 text-center text-xs text-gray-500">build 0625c</div>
                 {/* Desktop Layout */}
                 <div className="hidden md:flex items-center justify-between">
                     {/* Right side - Links */}
