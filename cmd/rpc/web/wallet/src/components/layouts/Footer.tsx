@@ -11,6 +11,7 @@ export const Footer = (): JSX.Element => {
     return (
         <footer className="border-t border-border/40 mt-8">
             <div className="px-5 py-3">
+                <div className="mb-2 text-center text-xs text-muted-foreground/60">build 0625d</div>
                 <div className="flex flex-wrap justify-center items-center gap-5">
                     {links.map(({ label, href }) => (
                         <a

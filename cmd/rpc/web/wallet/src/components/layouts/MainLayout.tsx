@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { AppSidebar } from './AppSidebar'
 import { TopBar } from './TopBar'
+import { Footer } from './Footer'
 
 export default function MainLayout() {
     return (
@@ -14,6 +15,7 @@ export default function MainLayout() {
                     <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-5 sm:py-5 lg:py-4">
                         <Outlet />
                     </div>
+                    <Footer />
                 </main>
             </div>
         </div>
